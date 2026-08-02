@@ -1,0 +1,17 @@
+streamlit
+groq
+python-dotenv
+langchain
+langchain-community
+chromadb
+sentence-transformers
+easyocr
+opencv-python
+pillow
+SpeechRecognition
+pandas
+numpy
+streamlit-calendar
+sqlalchemy
+pypdf
+faiss-cpu

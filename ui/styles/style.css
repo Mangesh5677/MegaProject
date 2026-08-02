@@ -1,0 +1,115 @@
+/* ================================
+   AI Productivity Manager Theme
+================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+html, body, [class*="css"]{
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Background */
+.stApp{
+    background: linear-gradient(135deg,#0f172a,#111827,#1e293b);
+}
+
+/* Main container */
+.block-container{
+    padding-top:1rem;
+    padding-left:2rem;
+    padding-right:2rem;
+}
+
+/* Headers */
+h1,h2,h3{
+    color:#ffffff;
+    font-weight:700;
+}
+
+/* Glass Cards */
+.glass-card{
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:20px;
+    padding:20px;
+    margin-bottom:15px;
+    box-shadow:0 8px 32px rgba(0,0,0,.3);
+    transition:.3s;
+}
+
+.glass-card:hover{
+    transform:translateY(-5px);
+}
+
+/* Metric Cards */
+.metric-card{
+    background:#1e293b;
+    border-radius:18px;
+    padding:20px;
+    text-align:center;
+    color:white;
+    box-shadow:0 0 20px rgba(59,130,246,.25);
+}
+
+/* Buttons */
+.stButton>button{
+    width:100%;
+    border-radius:12px;
+    background:#2563eb;
+    color:white;
+    font-weight:600;
+    border:none;
+    height:45px;
+    transition:.3s;
+}
+
+.stButton>button:hover{
+    background:#1d4ed8;
+    transform:scale(1.03);
+}
+
+/* Inputs */
+.stTextInput input,
+.stTextArea textarea,
+.stSelectbox div,
+.stNumberInput input{
+    border-radius:10px !important;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"]{
+    background:#0f172a;
+}
+
+section[data-testid="stSidebar"] *{
+    color:white;
+}
+
+/* Tables */
+table{
+    border-radius:12px;
+    overflow:hidden;
+}
+
+/* Divider */
+hr{
+    border:1px solid rgba(255,255,255,.1);
+}
+/* Task Card */
+
+/* Task Cards */
+
+.task-card{
+    background:#1e293b;
+    border-radius:20px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 15px 35px rgba(0,0,0,.25);
+    transition:.3s;
+}
+
+.task-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(37,99,235,.35);
+}
