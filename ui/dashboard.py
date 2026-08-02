@@ -1,110 +1,120 @@
 import streamlit as st
+
 from modules.database.database import SessionLocal
-from modules.database.models import Task, FixedSchedule
+from modules.dashboard.dashboard_service import get_dashboard_data
+
+
+def card(title, value, icon, color):
+
+    st.markdown(
+        f"""
+<div class="glass-card">
+
+<div class="card-icon">{icon}</div>
+
+<div class="card-title">{title}</div>
+
+<div class="card-value">{value}</div>
+
+</div>
+""",
+        unsafe_allow_html=True,
+    )
 
 
 def render_dashboard():
 
     db = SessionLocal()
 
-    total_tasks = db.query(Task).count()
-    completed_tasks = db.query(Task).filter(Task.status == "Completed").count()
-    pending_tasks = db.query(Task).filter(Task.status == "Pending").count()
-
-    productivity = 0
-
-    if total_tasks > 0:
-        productivity = int((completed_tasks / total_tasks) * 100)
-
-    total_classes = db.query(FixedSchedule).count()
+    data = get_dashboard_data(db)
 
     st.title("🧠 AI Productivity Manager")
-    st.caption("Your Personal AI Study Assistant")
 
-    st.markdown("---")
+    st.caption("Welcome back, Mangesh 👋")
 
-    col1, col2, col3, col4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-    with col1:
-        st.markdown(f"""
-        <div class="glass-card">
-            <h4>📋 Total Tasks</h4>
-            <h1>{total_tasks}</h1>
-        </div>
-        """, unsafe_allow_html=True)
+    with c1:
+        card("Total Tasks", data["total"], "📋", "#2563eb")
 
-    with col2:
-        st.markdown(f"""
-        <div class="glass-card">
-            <h4>⏳ Pending</h4>
-            <h1>{pending_tasks}</h1>
-        </div>
-        """, unsafe_allow_html=True)
+    with c2:
+        card("Pending", data["pending"], "⏳", "#f59e0b")
 
-    with col3:
-        st.markdown(f"""
-        <div class="glass-card">
-            <h4>✅ Completed</h4>
-            <h1>{completed_tasks}</h1>
-        </div>
-        """, unsafe_allow_html=True)
+    with c3:
+        card("Completed", data["completed"], "✅", "#22c55e")
 
-    with col4:
-        st.markdown(f"""
-        <div class="glass-card">
-            <h4>⚡ Productivity</h4>
-            <h1>{productivity}%</h1>
-        </div>
-        """, unsafe_allow_html=True)
+    with c4:
+        card("Productivity", f"{data['productivity']}%", "⚡", "#7c3aed")
 
-    st.markdown("---")
+    st.divider()
 
     left, right = st.columns([2, 1])
 
     with left:
 
-        st.subheader("📅 Weekly Timetable")
+        st.subheader("📅 Today's Timetable")
 
-        schedules = db.query(FixedSchedule).all()
+        if len(data["today_classes"]) == 0:
 
-        if schedules:
-
-            for item in schedules:
-
-                st.markdown(f"""
-                <div class="glass-card">
-                <b>{item.day}</b><br>
-                📚 {item.title}<br>
-                🕒 {item.start_time} - {item.end_time}
-                </div>
-                """, unsafe_allow_html=True)
+            st.info("No classes today")
 
         else:
-            st.info("No timetable added.")
+
+            for cls in data["today_classes"]:
+
+                st.markdown(
+                    f"""
+<div class="schedule-card">
+
+🕒 <b>{cls.start_time.strftime('%H:%M')}</b>
+
+➡
+
+<b>{cls.end_time.strftime('%H:%M')}</b>
+
+<br>
+
+📘 {cls.title}
+
+</div>
+""",
+                    unsafe_allow_html=True,
+                )
 
     with right:
 
-        st.subheader("🤖 AI Suggestions")
+        st.subheader("🎯 Today's Goal")
 
-        if pending_tasks == 0:
+        st.progress(data["productivity"] / 100)
 
-            st.success("🎉 Great! No pending tasks.")
+        st.write(f"### {data['productivity']}% Completed")
+
+        if data["pending"] == 0:
+
+            st.success("🎉 All tasks completed")
 
         else:
 
-            st.warning(f"""
-You have **{pending_tasks} pending task(s)**.
+            st.warning(f"{data['pending']} Tasks Remaining")
 
-Click **AI Scheduler**
-to generate today's study plan.
-""")
+    st.divider()
 
-        st.markdown("### 💡 Quick Tips")
+    st.subheader("🤖 AI Recommendation")
 
-        st.info("✔ Complete High Priority Tasks First")
+    if data["pending"] == 0:
 
-        st.info("📖 Study for 50 mins + 10 mins Break")
+        st.success("Enjoy your day! Everything is completed.")
 
-        st.info("💧 Drink Water Every Hour")
+    else:
+
+        st.info(
+            f"""
+Complete **High Priority** tasks first.
+
+You currently have **{data['pending']} pending tasks**.
+
+Use your free college slots wisely.
+"""
+        )
 
     db.close()

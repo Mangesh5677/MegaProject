@@ -2,6 +2,10 @@ from sqlalchemy import Column, Integer, String, Date, Time, Boolean
 from .database import Base
 
 
+# ==========================================
+# Task Model
+# ==========================================
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -17,8 +21,10 @@ class Task(Base):
     due_date = Column(Date)
     due_time = Column(Time)
 
-    # AI Scheduler Fields
+    # Duration in Minutes
     duration = Column(Integer)
+
+    # AI Generated Schedule
     scheduled_date = Column(Date, nullable=True)
     scheduled_start = Column(Time, nullable=True)
     scheduled_end = Column(Time, nullable=True)
@@ -28,16 +34,43 @@ class Task(Base):
     reminder_sent = Column(Boolean, default=False)
 
 
+# ==========================================
+# Fixed Weekly Timetable
+# ==========================================
+
 class FixedSchedule(Base):
     __tablename__ = "fixed_schedule"
 
     id = Column(Integer, primary_key=True, index=True)
 
     day = Column(String, nullable=False)
+
     title = Column(String, nullable=False)
+
     category = Column(String)
 
     start_time = Column(Time)
+
     end_time = Column(Time)
 
     locked = Column(Boolean, default=True)
+
+
+# ==========================================
+# AI Generated Schedule
+# ==========================================
+
+class ScheduledTask(Base):
+    __tablename__ = "scheduled_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    task_id = Column(Integer)
+
+    title = Column(String)
+
+    date = Column(Date)
+
+    start_time = Column(Time)
+
+    end_time = Column(Time)
