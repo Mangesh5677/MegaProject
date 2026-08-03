@@ -15,17 +15,39 @@ def get_statistics(db):
 
     productivity = 0
 
-    if total != 0:
+    if total > 0:
         productivity = round((completed / total) * 100)
 
-    high = len([t for t in tasks if t.priority == "High"])
-    medium = len([t for t in tasks if t.priority == "Medium"])
-    low = len([t for t in tasks if t.priority == "Low"])
+    high = len(
+        [t for t in tasks if t.priority == "High"]
+    )
+
+    medium = len(
+        [t for t in tasks if t.priority == "Medium"]
+    )
+
+    low = len(
+        [t for t in tasks if t.priority == "Low"]
+    )
 
     return {
         "total": total,
         "completed": completed,
         "pending": pending,
         "productivity": productivity,
-        "priority": [high, medium, low]
+        "priority": {
+            "High": high,
+            "Medium": medium,
+            "Low": low
+        }
     }
+def get_recent_tasks(db):
+
+    tasks = (
+        db.query(Task)
+        .order_by(Task.due_date)
+        .all()
+    )
+
+    return tasks
+
