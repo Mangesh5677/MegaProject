@@ -1,5 +1,10 @@
 import streamlit as st
-from streamlit_mic_recorder import speech_to_text
+
+try:
+    from streamlit_mic_recorder import speech_to_text
+    MIC_AVAILABLE = True
+except ImportError:
+    MIC_AVAILABLE = False
 
 from modules.ai.voice import speak
 from modules.database.database import SessionLocal
