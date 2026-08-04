@@ -18,3 +18,4 @@ faiss-cpu
 apscheduler
 plyer
 plotly
+streamlit-mic-recorder
