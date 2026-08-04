@@ -19,3 +19,4 @@ apscheduler
 plyer
 plotly
 streamlit-mic-recorder
+gTTS
