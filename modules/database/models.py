@@ -31,6 +31,46 @@ class User(Base):
 
 
 # ==========================================
+# Settings Model
+# ==========================================
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, unique=True, nullable=False)
+
+    # Notifications
+    email_notification = Column(Boolean, default=True)
+
+    desktop_notification = Column(Boolean, default=True)
+
+    reminder_24h = Column(Boolean, default=True)
+
+    reminder_2h = Column(Boolean, default=True)
+
+    reminder_30m = Column(Boolean, default=True)
+
+    # AI
+    ai_model = Column(
+        String,
+        default="llama-3.3-70b-versatile"
+    )
+
+    temperature = Column(String, default="0.4")
+
+    max_tokens = Column(Integer, default=600)
+
+    # Scheduler
+    work_start = Column(Time, nullable=True)
+
+    work_end = Column(Time, nullable=True)
+
+    daily_hours = Column(Integer, default=6)
+
+
+# ==========================================
 # Task Model
 # ==========================================
 

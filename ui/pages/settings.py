@@ -1,10 +1,14 @@
 import os
 import shutil
+from chromadb.app import settings
 import streamlit as st
 
 from modules.database.database import SessionLocal
 from modules.database.models import User, Task
-
+from modules.settings.settings_service import (
+    get_settings,
+    save_settings,
+)
 
 def render_settings():
 
@@ -14,6 +18,10 @@ def render_settings():
     db = SessionLocal()
 
     user = st.session_state.user
+    settings = get_settings(
+    db,
+    user.id
+)
 
     # ==========================================
     # Account
@@ -32,99 +40,124 @@ def render_settings():
             value=user.email,
             disabled=True
         )
-
-    # ==========================================
-    # Notifications
-    # ==========================================
+# ==========================================
+# Notifications
+# ==========================================
 
     with st.expander("🔔 Notification Settings"):
 
         email_notification = st.checkbox(
             "Enable Email Notifications",
-            value=True
+            value=settings.email_notification
         )
 
         desktop_notification = st.checkbox(
             "Enable Desktop Notifications",
-            value=True
+            value=settings.desktop_notification
         )
 
         reminder24 = st.checkbox(
             "24 Hour Reminder",
-            value=True
+            value=settings.reminder_24h
         )
 
         reminder2 = st.checkbox(
             "2 Hour Reminder",
-            value=True
+            value=settings.reminder_2h
         )
 
         reminder30 = st.checkbox(
             "30 Minute Reminder",
-            value=True
+            value=settings.reminder_30m
         )
 
-        if st.button("💾 Save Notification Settings"):
+    if st.button("💾 Save Notification Settings"):
 
-            st.success("Notification settings saved.")
+        settings.email_notification = email_notification
+        settings.desktop_notification = desktop_notification
+        settings.reminder_24h = reminder24
+        settings.reminder_2h = reminder2
+        settings.reminder_30m = reminder30
 
-    # ==========================================
-    # AI Settings
-    # ==========================================
+        save_settings(db, settings)
 
+        st.success("✅ Notification settings saved successfully.")
+# ==========================================
+# AI Settings
+# ==========================================
     with st.expander("🤖 AI Settings"):
+
+        models = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant"
+        ]
+
+        index = 0
+
+        if settings.ai_model in models:
+            index = models.index(settings.ai_model)
 
         model = st.selectbox(
             "AI Model",
-            [
-                "llama-3.3-70b-versatile",
-                "llama-3.1-8b-instant"
-            ]
+            models,
+            index=index
         )
 
         temperature = st.slider(
             "Creativity",
             0.0,
             1.0,
-            0.4
+            float(settings.temperature)
         )
 
         tokens = st.slider(
             "Max Tokens",
             100,
             2000,
-            600
+            settings.max_tokens
         )
 
-        if st.button("💾 Save AI Settings"):
+    if st.button("💾 Save AI Settings"):
 
-            st.success("AI settings saved.")
+        settings.ai_model = model
+        settings.temperature = str(temperature)
+        settings.max_tokens = tokens
 
-    # ==========================================
-    # Scheduler
-    # ==========================================
+        save_settings(db, settings)
+
+        st.success("✅ AI settings saved.")
+# ==========================================
+# Scheduler
+# ==========================================
 
     with st.expander("📅 Scheduler"):
 
         work_start = st.time_input(
-            "Work Start"
+            "Work Start",
+            value=settings.work_start
         )
 
         work_end = st.time_input(
-            "Work End"
+            "Work End",
+            value=settings.work_end
         )
 
         daily_hours = st.slider(
             "Study Hours / Day",
             1,
             12,
-            6
+            settings.daily_hours
         )
 
-        if st.button("Save Scheduler"):
+    if st.button("💾 Save Scheduler"):
 
-            st.success("Scheduler settings saved.")
+        settings.work_start = work_start
+        settings.work_end = work_end
+        settings.daily_hours = daily_hours
 
+        save_settings(db, settings)
+
+        st.success("✅ Scheduler settings saved.")
     # ==========================================
     # Database Backup
     # ==========================================
