@@ -1,6 +1,5 @@
 import os
 import shutil
-from chromadb.app import settings
 import streamlit as st
 
 from modules.database.database import SessionLocal
