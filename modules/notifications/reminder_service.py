@@ -2,11 +2,12 @@ from datetime import datetime
 
 from modules.database.models import Task
 from modules.notifications.email_service import send_email
+from modules.notifications.desktop_notification import show_notification
 
 
 def send_task_email(task, subject, body):
     """
-    Send email for a task.
+    Send reminder email.
     """
     send_email(
         task.email,
@@ -42,41 +43,54 @@ def check_reminders(db):
 
         remaining = (deadline - now).total_seconds()
 
-        print("--------------------------------")
+        print("-----------------------------------------")
         print("Task:", task.title)
+        print("Deadline:", deadline)
         print("Remaining:", round(remaining / 60), "minutes")
 
         if remaining <= 0:
+            print("Deadline already passed.")
             continue
 
-        # ==========================
-        # 24 Hour Reminder
-        # ==========================
+        # ==========================================
+        # 24 HOURS REMINDER
+        # ==========================================
 
         if (
             remaining <= 86400
             and not task.reminder_24h_sent
         ):
 
-            send_task_email(
-                task,
-                f"📅 Reminder (24 Hours): {task.title}",
-                f"""
+            subject = f"📅 24 Hour Reminder - {task.title}"
+
+            body = f"""
 Hello,
 
-Your task is due in less than 24 hours.
+This is a reminder from AI Productivity Manager.
+
+Your task is due within 24 hours.
 
 Task:
 {task.title}
 
-Deadline:
-{task.due_date} {task.due_time}
+Description:
+{task.description}
 
 Priority:
 {task.priority}
 
-AI Productivity Manager
+Deadline:
+{task.due_date}
+{task.due_time}
+
+Good luck!
 """
+
+            send_task_email(task, subject, body)
+
+            show_notification(
+                title="📅 24 Hour Reminder",
+                message=f"{task.title}\nDeadline: {task.due_time}"
             )
 
             task.reminder_24h_sent = True
@@ -84,34 +98,43 @@ AI Productivity Manager
 
             print("✅ 24 Hour Reminder Sent")
 
-        # ==========================
-        # 2 Hour Reminder
-        # ==========================
+        # ==========================================
+        # 2 HOURS REMINDER
+        # ==========================================
 
         elif (
             remaining <= 7200
             and not task.reminder_2h_sent
         ):
 
-            send_task_email(
-                task,
-                f"⏰ Reminder (2 Hours): {task.title}",
-                f"""
+            subject = f"⏰ 2 Hour Reminder - {task.title}"
+
+            body = f"""
 Hello,
 
-Only 2 hours remaining.
+Only 2 hours are left before your deadline.
 
 Task:
 {task.title}
 
-Deadline:
-{task.due_date} {task.due_time}
+Description:
+{task.description}
 
 Priority:
 {task.priority}
 
-AI Productivity Manager
+Deadline:
+{task.due_date}
+{task.due_time}
+
+Please start working on it now.
 """
+
+            send_task_email(task, subject, body)
+
+            show_notification(
+                title="⏰ 2 Hour Reminder",
+                message=f"{task.title}\nDeadline: {task.due_time}"
             )
 
             task.reminder_2h_sent = True
@@ -119,36 +142,45 @@ AI Productivity Manager
 
             print("✅ 2 Hour Reminder Sent")
 
-        # ==========================
-        # 30 Minute Reminder
-        # ==========================
+        # ==========================================
+        # 30 MINUTES REMINDER
+        # ==========================================
 
         elif (
             remaining <= 1800
             and not task.reminder_30m_sent
         ):
 
-            send_task_email(
-                task,
-                f"🚨 Reminder (30 Minutes): {task.title}",
-                f"""
+            subject = f"🚨 Final Reminder - {task.title}"
+
+            body = f"""
 Hello,
 
-Only 30 minutes left.
+Only 30 minutes remain before your deadline.
 
 Task:
 {task.title}
 
-Deadline:
-{task.due_date} {task.due_time}
+Description:
+{task.description}
 
 Priority:
 {task.priority}
 
-Please complete it immediately.
+Deadline:
+{task.due_date}
+{task.due_time}
+
+Please complete your task immediately.
 
 AI Productivity Manager
 """
+
+            send_task_email(task, subject, body)
+
+            show_notification(
+                title="🚨 Final Reminder",
+                message=f"{task.title}\nOnly 30 minutes remaining!"
             )
 
             task.reminder_30m_sent = True
@@ -158,4 +190,5 @@ AI Productivity Manager
 
         else:
 
-            print("Waiting...")
+            hours = round(remaining / 3600, 2)
+            print(f"Waiting... {hours} hour(s) remaining")

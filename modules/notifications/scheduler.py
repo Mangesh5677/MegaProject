@@ -12,6 +12,10 @@ def run_job():
 
     try:
         check_reminders(db)
+
+    except Exception as e:
+        print(f"❌ Reminder Error: {e}")
+
     finally:
         db.close()
 
@@ -27,6 +31,8 @@ def start_scheduler():
         minutes=1,
         id="email_scheduler",
         replace_existing=True,
+        max_instances=1,
+        coalesce=True,
     )
 
     scheduler.start()

@@ -16,3 +16,4 @@ sqlalchemy
 pypdf
 faiss-cpu
 apscheduler
+plyer
