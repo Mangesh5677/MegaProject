@@ -1,5 +1,13 @@
 from datetime import date
-from sqlalchemy import Column, Integer, String, Date, Time, Boolean
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    Time,
+    Boolean,
+)
 
 from .database import Base
 
@@ -32,6 +40,7 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     title = Column(String, nullable=False)
+
     description = Column(String)
 
     priority = Column(String)
@@ -39,19 +48,28 @@ class Task(Base):
     status = Column(String, default="Pending")
 
     due_date = Column(Date)
+
     due_time = Column(Time)
 
-    # Duration in Minutes
+    # Duration (Minutes)
     duration = Column(Integer)
 
-    # AI Generated Schedule
+    # AI Scheduler
     scheduled_date = Column(Date, nullable=True)
+
     scheduled_start = Column(Time, nullable=True)
+
     scheduled_end = Column(Time, nullable=True)
 
     # Email Reminder
     email = Column(String, nullable=True)
-    reminder_sent = Column(Boolean, default=False)
+
+    # Reminder Flags
+    reminder_24h_sent = Column(Boolean, default=False)
+
+    reminder_2h_sent = Column(Boolean, default=False)
+
+    reminder_30m_sent = Column(Boolean, default=False)
 
 
 # ==========================================

@@ -1,4 +1,6 @@
 import streamlit as st
+from modules.notifications.scheduler import start_scheduler
+
 
 # ==========================
 # Page Config
@@ -18,6 +20,10 @@ from modules.database.database import Base, engine
 import modules.database.models
 
 Base.metadata.create_all(bind=engine)
+
+if "scheduler_started" not in st.session_state:
+    start_scheduler()
+    st.session_state.scheduler_started = True
 
 # ==========================
 # Load CSS

@@ -15,3 +15,4 @@ streamlit-calendar
 sqlalchemy
 pypdf
 faiss-cpu
+apscheduler

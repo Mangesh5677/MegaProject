@@ -12,7 +12,7 @@ def add_fixed_schedule(db, day, title, category, start_time, end_time):
         category=category,
         start_time=start_time,
         end_time=end_time,
-        locked=True
+        locked=True,
     )
 
     db.add(event)
@@ -26,9 +26,11 @@ def get_fixed_schedules(db):
 
 
 def delete_fixed_schedule(db, schedule_id):
-    event = db.query(FixedSchedule).filter(
-        FixedSchedule.id == schedule_id
-    ).first()
+    event = (
+        db.query(FixedSchedule)
+        .filter(FixedSchedule.id == schedule_id)
+        .first()
+    )
 
     if event:
         db.delete(event)
@@ -47,7 +49,7 @@ def add_task(
     due_date,
     due_time,
     duration,
-    email
+    email,
 ):
     task = Task(
         title=title,
@@ -57,8 +59,10 @@ def add_task(
         due_time=due_time,
         duration=duration,
         email=email,
-        reminder_sent=False,
-        status="Pending"
+        reminder_24h_sent=False,
+        reminder_2h_sent=False,
+        reminder_30m_sent=False,
+        status="Pending",
     )
 
     db.add(task)
@@ -72,15 +76,19 @@ def get_tasks(db):
 
 
 def get_pending_tasks(db):
-    return db.query(Task).filter(
-        Task.status == "Pending"
-    ).all()
+    return (
+        db.query(Task)
+        .filter(Task.status == "Pending")
+        .all()
+    )
 
 
 def delete_task(db, task_id):
-    task = db.query(Task).filter(
-        Task.id == task_id
-    ).first()
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id)
+        .first()
+    )
 
     if task:
         db.delete(task)
@@ -88,20 +96,12 @@ def delete_task(db, task_id):
 
 
 def complete_task(db, task_id):
-    task = db.query(Task).filter(
-        Task.id == task_id
-    ).first()
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id)
+        .first()
+    )
 
     if task:
         task.status = "Completed"
-        db.commit()
-
-
-def mark_reminder_sent(db, task_id):
-    task = db.query(Task).filter(
-        Task.id == task_id
-    ).first()
-
-    if task:
-        task.reminder_sent = True
         db.commit()
