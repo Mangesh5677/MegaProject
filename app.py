@@ -1,5 +1,6 @@
 import streamlit as st
 from modules.notifications.scheduler import start_scheduler
+from ui.pages.settings import render_settings
 
 
 # ==========================
@@ -142,4 +143,4 @@ elif page == "AI Advisor":
 
 elif page == "Settings":
 
-    st.title("⚙ Settings")
+    render_settings()
