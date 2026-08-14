@@ -1,162 +1,218 @@
 import streamlit as st
-import plotly.express as px
+import pandas as pd
 
 from modules.database.database import SessionLocal
-from modules.analytics.analytics_service import (
-    get_statistics,
-    get_recent_tasks,
-)
+from modules.database.crud import get_tasks
 
 
 def render_analytics():
 
-    st.title("📊 Analytics Dashboard")
+    st.title("📊 Analytics")
+
+    user = st.session_state.user
 
     db = SessionLocal()
 
-    stats = get_statistics(db)
+    try:
 
-    # ==========================
-    # Top Metrics
-    # ==========================
+        # =====================================================
+        # Get ONLY logged-in user's tasks
+        # =====================================================
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    col1.metric("📋 Total", stats["total"])
-    col2.metric("✅ Completed", stats["completed"])
-    col3.metric("⏳ Pending", stats["pending"])
-    col4.metric("⚡ Productivity", f"{stats['productivity']}%")
-
-    st.divider()
-
-    # ==========================
-    # Charts
-    # ==========================
-
-    left, right = st.columns(2)
-
-    with left:
-
-        labels = []
-        values = []
-
-        for k, v in stats["priority"].items():
-
-            if v > 0:
-                labels.append(k)
-                values.append(v)
-
-        if values:
-
-            fig = px.pie(
-                names=labels,
-                values=values,
-                title="Priority Distribution",
-                hole=0.45,
-            )
-
-            fig.update_layout(
-                template="plotly_dark",
-                height=450,
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-            )
-
-        else:
-
-            st.info("No priority data available.")
-
-    with right:
-
-        fig = px.bar(
-            x=["Completed", "Pending"],
-            y=[
-                stats["completed"],
-                stats["pending"],
-            ],
-            text=[
-                stats["completed"],
-                stats["pending"],
-            ],
-            title="Task Status",
+        tasks = get_tasks(
+            db,
+            user.id
         )
 
-        fig.update_layout(
-            template="plotly_dark",
-            height=450,
+        # =====================================================
+        # No Data
+        # =====================================================
+
+        if not tasks:
+
+            st.info(
+                "📭 No task data available yet."
+            )
+
+            st.write(
+                "Create some tasks to see your productivity analytics."
+            )
+
+            return
+
+        # =====================================================
+        # Basic Statistics
+        # =====================================================
+
+        total = len(tasks)
+
+        completed = len(
+            [
+                task
+                for task in tasks
+                if task.status == "Completed"
+            ]
         )
 
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
+        pending = len(
+            [
+                task
+                for task in tasks
+                if task.status == "Pending"
+            ]
         )
 
-    st.divider()
+        productivity = (
+            round((completed / total) * 100)
+            if total > 0
+            else 0
+        )
 
-    # ==========================
-    # Productivity
-    # ==========================
+        # =====================================================
+        # Statistics Cards
+        # =====================================================
 
-    st.subheader("📈 Productivity")
+        c1, c2, c3, c4 = st.columns(4)
 
-    st.progress(stats["productivity"] / 100)
+        with c1:
 
-    st.write(f"### {stats['productivity']}% Completed")
+            st.metric(
+                "📋 Total Tasks",
+                total
+            )
 
-    if stats["productivity"] >= 90:
-        st.success("🏆 Excellent Productivity")
+        with c2:
 
-    elif stats["productivity"] >= 70:
-        st.info("🚀 Great Progress")
+            st.metric(
+                "⏳ Pending",
+                pending
+            )
 
-    elif stats["productivity"] >= 50:
-        st.warning("🙂 Keep Going")
+        with c3:
 
-    else:
-        st.error("⚠ You have many pending tasks.")
+            st.metric(
+                "✅ Completed",
+                completed
+            )
 
-    st.divider()
+        with c4:
 
-    # ==========================
-    # Recent Tasks
-    # ==========================
+            st.metric(
+                "⚡ Productivity",
+                f"{productivity}%"
+            )
 
-    st.subheader("📋 Recent Tasks")
+        st.divider()
 
-    tasks = get_recent_tasks(db)
+        # =====================================================
+        # Completion Chart
+        # =====================================================
 
-    if tasks:
+        st.subheader("📈 Task Completion")
 
-        table = []
+        chart_data = pd.DataFrame(
+            {
+                "Status": [
+                    "Completed",
+                    "Pending"
+                ],
+                "Tasks": [
+                    completed,
+                    pending
+                ],
+            }
+        )
+
+        st.bar_chart(
+            chart_data.set_index("Status")
+        )
+
+        st.divider()
+
+        # =====================================================
+        # Priority Analysis
+        # =====================================================
+
+        st.subheader("🎯 Priority Analysis")
+
+        high = len(
+            [
+                task
+                for task in tasks
+                if task.priority == "High"
+            ]
+        )
+
+        medium = len(
+            [
+                task
+                for task in tasks
+                if task.priority == "Medium"
+            ]
+        )
+
+        low = len(
+            [
+                task
+                for task in tasks
+                if task.priority == "Low"
+            ]
+        )
+
+        priority_data = pd.DataFrame(
+            {
+                "Priority": [
+                    "High",
+                    "Medium",
+                    "Low"
+                ],
+                "Tasks": [
+                    high,
+                    medium,
+                    low
+                ],
+            }
+        )
+
+        st.bar_chart(
+            priority_data.set_index("Priority")
+        )
+
+        st.divider()
+
+        # =====================================================
+        # Task Details
+        # =====================================================
+
+        st.subheader("📋 Your Tasks")
+
+        task_rows = []
 
         for task in tasks:
 
-            table.append(
+            task_rows.append(
                 {
-                    "Title": task.title,
+                    "Task": task.title,
                     "Priority": task.priority,
                     "Status": task.status,
-                    "Deadline": task.due_date,
-                    "Duration (min)": task.duration,
-                    "Scheduled": (
-                        f"{task.scheduled_start} - {task.scheduled_end}"
-                        if task.scheduled_start
-                        else "Not Scheduled"
+                    "Due Date": task.due_date,
+                    "Due Time": task.due_time,
+                    "Duration": (
+                        f"{task.duration} min"
+                        if task.duration
+                        else "-"
                     ),
                 }
             )
 
+        df = pd.DataFrame(task_rows)
+
         st.dataframe(
-            table,
+            df,
             use_container_width=True,
-            hide_index=True,
+            hide_index=True
         )
 
-    else:
+    finally:
 
-        st.info("No tasks available.")
-
-    db.close()
+        db.close()

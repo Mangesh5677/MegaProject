@@ -1,48 +1,141 @@
 import streamlit as st
+from datetime import date, datetime, time
 
 from modules.database.database import SessionLocal
-from modules.calendar.calendar_service import get_today_schedule
+from modules.database.crud import get_tasks
 
 
 def render_calendar():
 
-    st.title("📅 Today's Calendar")
+    st.title("📅 Calendar")
+
+    user = st.session_state.user
 
     db = SessionLocal()
 
-    fixed, tasks = get_today_schedule(db)
+    try:
 
-    st.subheader("🏫 Fixed Timetable")
+        # =====================================================
+        # Get ONLY logged-in user's tasks
+        # =====================================================
 
-    if not fixed:
-        st.info("No classes today.")
+        tasks = get_tasks(
+            db,
+            user.id
+        )
 
-    else:
+        # =====================================================
+        # Calendar Date
+        # =====================================================
 
-        for event in fixed:
+        selected_date = st.date_input(
+            "Select Date",
+            value=date.today()
+        )
 
-            st.success(
-                f"{event.start_time.strftime('%H:%M')} - "
-                f"{event.end_time.strftime('%H:%M')} | "
-                f"{event.title}"
-            )
+        st.divider()
 
-    st.divider()
+        st.subheader(
+            f"📋 Tasks for {selected_date.strftime('%d %B %Y')}"
+        )
 
-    st.subheader("🤖 AI Scheduled Tasks")
+        # =====================================================
+        # Filter tasks for selected date
+        # =====================================================
 
-    if not tasks:
+        selected_tasks = [
+            task
+            for task in tasks
+            if task.due_date == selected_date
+        ]
 
-        st.warning("No scheduled tasks.")
+        # =====================================================
+        # No Tasks
+        # =====================================================
 
-    else:
-
-        for task in tasks:
+        if not selected_tasks:
 
             st.info(
-                f"{task.scheduled_start.strftime('%H:%M')} - "
-                f"{task.scheduled_end.strftime('%H:%M')} | "
-                f"{task.title}"
+                "📭 No tasks scheduled for this date."
             )
 
-    db.close()
+            return
+
+        # =====================================================
+        # Display Tasks
+        # =====================================================
+
+        for task in sorted(
+            selected_tasks,
+            key=lambda x: x.due_time or time(23, 59)
+        ):
+
+            if task.priority == "High":
+
+                badge = "🔴 HIGH"
+
+            elif task.priority == "Medium":
+
+                badge = "🟡 MEDIUM"
+
+            else:
+
+                badge = "🟢 LOW"
+
+            if task.status == "Completed":
+
+                status = "✅ Completed"
+
+            else:
+
+                status = "⏳ Pending"
+
+            due_time = (
+                task.due_time.strftime("%H:%M")
+                if task.due_time
+                else "No time"
+            )
+
+            duration = (
+                f"{task.duration} minutes"
+                if task.duration
+                else "Not specified"
+            )
+
+            st.markdown(
+                f"""
+                <div class="task-card">
+
+                    <h3>📌 {task.title}</h3>
+
+                    <p>
+                        {task.description or "No description"}
+                    </p>
+
+                    <hr>
+
+                    <b>{badge}</b>
+
+                    <br><br>
+
+                    🕒 Due Time:
+                    <b>{due_time}</b>
+
+                    <br>
+
+                    ⏱ Duration:
+                    <b>{duration}</b>
+
+                    <br>
+
+                    📌 Status:
+                    <b>{status}</b>
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    finally:
+
+        db.close()
