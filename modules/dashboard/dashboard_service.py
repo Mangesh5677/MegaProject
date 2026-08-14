@@ -3,36 +3,79 @@ from datetime import date
 from modules.database.models import Task, FixedSchedule
 
 
-def get_dashboard_data(db):
+def get_dashboard_data(db, user_id):
 
-    tasks = db.query(Task).all()
+    # ==========================================================
+    # Get ONLY logged-in user's tasks
+    # ==========================================================
+
+    tasks = (
+        db.query(Task)
+        .filter(Task.user_id == user_id)
+        .all()
+    )
 
     total = len(tasks)
 
     completed = len(
-        [t for t in tasks if t.status == "Completed"]
+        [
+            task
+            for task in tasks
+            if task.status == "Completed"
+        ]
     )
 
-    pending = total - completed
+    pending = len(
+        [
+            task
+            for task in tasks
+            if task.status == "Pending"
+        ]
+    )
+
+    # ==========================================================
+    # Productivity
+    # ==========================================================
 
     productivity = 0
 
     if total > 0:
-        productivity = round((completed / total) * 100)
+        productivity = round(
+            (completed / total) * 100
+        )
+
+    # ==========================================================
+    # Today's Day
+    # ==========================================================
 
     today = date.today().strftime("%A")
 
+    # ==========================================================
+    # Get ONLY logged-in user's timetable
+    # ==========================================================
+
     today_classes = (
         db.query(FixedSchedule)
-        .filter(FixedSchedule.day == today)
-        .order_by(FixedSchedule.start_time)
+        .filter(
+            FixedSchedule.user_id == user_id
+        )
+        .filter(
+            FixedSchedule.day == today
+        )
+        .order_by(
+            FixedSchedule.start_time
+        )
         .all()
     )
+
+    # ==========================================================
+    # Return Dashboard Data
+    # ==========================================================
 
     return {
         "total": total,
         "completed": completed,
         "pending": pending,
         "productivity": productivity,
-        "today_classes": today_classes
+        "today_classes": today_classes,
     }

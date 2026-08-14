@@ -79,7 +79,7 @@ if not is_logged_in():
 # ==========================
 
 from ui.sidebar import render_sidebar
-from ui.dashboard import render_dashboard
+from ui.pages.dashboard import render_dashboard
 
 from ui.pages.tasks import render_tasks
 from ui.pages.fixed_schedule import render_fixed_schedule

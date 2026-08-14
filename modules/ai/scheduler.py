@@ -1,99 +1,207 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta, time
 
 from modules.database.models import Task, FixedSchedule
 
 
-PRIORITY_ORDER = {
-    "High": 0,
-    "Medium": 1,
-    "Low": 2,
-}
+# ============================================================
+# Helper: Check whether a time slot overlaps fixed timetable
+# ============================================================
+
+def is_time_available(
+    start_time,
+    end_time,
+    fixed_schedules
+):
+    for schedule in fixed_schedules:
+
+        fixed_start = schedule.start_time
+        fixed_end = schedule.end_time
+
+        if not fixed_start or not fixed_end:
+            continue
+
+        # Overlap check
+        if (
+            start_time < fixed_end
+            and end_time > fixed_start
+        ):
+            return False
+
+    return True
 
 
-def generate_schedule(db):
+# ============================================================
+# Generate AI Schedule
+# ============================================================
 
-    today_name = datetime.now().strftime("%A")
-    today_date = datetime.today().date()
+def generate_schedule(db, user_id):
 
-    # Sort by priority, then deadline
-    tasks = db.query(Task).filter(
-        Task.status == "Pending"
-    ).all()
+    # ========================================================
+    # Get ONLY logged-in user's pending tasks
+    # ========================================================
 
-    tasks.sort(
-        key=lambda t: (
-            PRIORITY_ORDER.get(t.priority, 3),
-            t.due_date or today_date
-        )
-    )
-
-    events = (
-        db.query(FixedSchedule)
-        .filter(FixedSchedule.day == today_name)
-        .order_by(FixedSchedule.start_time)
+    tasks = (
+        db.query(Task)
+        .filter(Task.user_id == user_id)
+        .filter(Task.status == "Pending")
+        .order_by(Task.due_date, Task.priority)
         .all()
     )
 
-    current = time(8, 0)
-    day_end = time(22, 0)
+    # ========================================================
+    # Get ONLY logged-in user's fixed timetable
+    # ========================================================
+
+    fixed_schedules = (
+        db.query(FixedSchedule)
+        .filter(FixedSchedule.user_id == user_id)
+        .all()
+    )
 
     scheduled = []
     unscheduled = []
 
+    # ========================================================
+    # Priority order
+    # ========================================================
+
+    priority_order = {
+        "High": 1,
+        "Medium": 2,
+        "Low": 3
+    }
+
+    tasks.sort(
+        key=lambda task: (
+            priority_order.get(
+                task.priority,
+                3
+            ),
+            task.due_date or datetime.max.date()
+        )
+    )
+
+    # ========================================================
+    # Schedule each task
+    # ========================================================
+
     for task in tasks:
 
-        duration = timedelta(minutes=task.duration)
+        if not task.duration:
+            task.duration = 60
 
-        while True:
+        if not task.due_date:
+            task.due_date = datetime.now().date()
 
-            conflict = False
+        task_scheduled = False
 
-            # Check against today's classes
-            for event in events:
+        current_date = datetime.now().date()
 
-                if current >= event.start_time and current < event.end_time:
-                    current = event.end_time
-                    conflict = True
+        # Don't schedule before today
+        if current_date > task.due_date:
+            current_date = task.due_date
+
+        # ====================================================
+        # Search each day until deadline
+        # ====================================================
+
+        while current_date <= task.due_date:
+
+            day_name = current_date.strftime("%A")
+
+            # Get fixed timetable for this user's day
+            day_schedule = [
+                schedule
+                for schedule in fixed_schedules
+                if schedule.day == day_name
+            ]
+
+            # =================================================
+            # Available working time
+            # =================================================
+
+            work_start = time(8, 0)
+            work_end = time(22, 0)
+
+            current_minutes = (
+                work_start.hour * 60
+                + work_start.minute
+            )
+
+            end_minutes = (
+                work_end.hour * 60
+                + work_end.minute
+            )
+
+            # =================================================
+            # Try 30-minute intervals
+            # =================================================
+
+            while current_minutes + task.duration <= end_minutes:
+
+                start_hour = current_minutes // 60
+                start_minute = current_minutes % 60
+
+                start = time(
+                    start_hour,
+                    start_minute
+                )
+
+                end_datetime = (
+                    datetime.combine(
+                        current_date,
+                        start
+                    )
+                    + timedelta(
+                        minutes=task.duration
+                    )
+                )
+
+                end = end_datetime.time()
+
+                # Don't go beyond working hours
+                if end > work_end:
                     break
 
-            if conflict:
-                continue
+                # Check fixed timetable
+                available = is_time_available(
+                    start,
+                    end,
+                    day_schedule
+                )
 
-            start_dt = datetime.combine(today_date, current)
-            end_dt = start_dt + duration
+                if available:
 
-            # If task overlaps the next class, move it after that class
-            overlap = False
+                    # =========================================
+                    # Save AI-generated schedule
+                    # =========================================
 
-            for event in events:
+                    task.scheduled_date = current_date
+                    task.scheduled_start = start
+                    task.scheduled_end = end
 
-                event_start = datetime.combine(today_date, event.start_time)
-                event_end = datetime.combine(today_date, event.end_time)
+                    db.commit()
+                    db.refresh(task)
 
-                if start_dt < event_end and end_dt > event_start:
-                    current = event.end_time
-                    overlap = True
+                    scheduled.append(task)
+
+                    task_scheduled = True
+
                     break
 
-            if overlap:
-                continue
+                current_minutes += 30
 
-            # End of working day
-            if end_dt.time() > day_end:
-                unscheduled.append(task)
+            if task_scheduled:
                 break
 
-            # Save schedule
-            task.scheduled_date = today_date
-            task.scheduled_start = start_dt.time()
-            task.scheduled_end = end_dt.time()
+            current_date += timedelta(days=1)
 
-            scheduled.append(task)
+        # ====================================================
+        # Couldn't schedule task
+        # ====================================================
 
-            current = end_dt.time()
+        if not task_scheduled:
 
-            break
-
-    db.commit()
+            unscheduled.append(task)
 
     return scheduled, unscheduled

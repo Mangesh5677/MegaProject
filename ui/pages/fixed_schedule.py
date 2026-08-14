@@ -5,7 +5,7 @@ from modules.database.database import SessionLocal
 from modules.database.crud import (
     add_fixed_schedule,
     get_fixed_schedules,
-    delete_fixed_schedule
+    delete_fixed_schedule,
 )
 
 
@@ -14,6 +14,11 @@ def render_fixed_schedule():
     st.title("📅 Fixed Weekly Timetable")
 
     db = SessionLocal()
+    user_id = st.session_state.user.id
+
+    # ==========================================
+    # Add Timetable
+    # ==========================================
 
     with st.form("schedule"):
 
@@ -26,8 +31,8 @@ def render_fixed_schedule():
                 "Thursday",
                 "Friday",
                 "Saturday",
-                "Sunday"
-            ]
+                "Sunday",
+            ],
         )
 
         title = st.text_input("Subject / Event")
@@ -41,52 +46,101 @@ def render_fixed_schedule():
                 "Travel",
                 "Lunch",
                 "Sleep",
-                "Other"
-            ]
+                "Other",
+            ],
         )
 
         start = st.time_input(
             "Start Time",
-            value=time(9, 0)
+            value=time(9, 0),
         )
 
         end = st.time_input(
             "End Time",
-            value=time(10, 0)
+            value=time(10, 0),
         )
 
-        if st.form_submit_button("Save"):
+        submitted = st.form_submit_button("💾 Save")
+
+        if submitted:
+
             add_fixed_schedule(
                 db,
+                user_id,
                 day,
                 title,
                 category,
                 start,
-                end
+                end,
             )
-            st.success("Timetable Saved")
+
+            st.success("✅ Timetable Saved")
             st.rerun()
 
     st.divider()
 
-    st.subheader("Weekly Timetable")
+    # ==========================================
+    # Weekly Timetable
+    # ==========================================
 
-    schedules = get_fixed_schedules(db)
+    st.subheader("📅 Weekly Timetable")
 
-    for item in schedules:
+    schedules = get_fixed_schedules(
+        db,
+        user_id,
+    )
 
-        col1, col2 = st.columns([6, 1])
+    if not schedules:
+        st.info("No timetable added yet.")
+    else:
 
-        with col1:
-            st.write(
-                f"**{item.day}** | "
-                f"{item.start_time} - {item.end_time} | "
-                f"{item.title} ({item.category})"
-            )
+        days = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ]
 
-        with col2:
-            if st.button("Delete", key=item.id):
-                delete_fixed_schedule(db, item.id)
-                st.rerun()
+        for day in days:
+
+            st.markdown(f"### {day}")
+
+            day_events = [
+                item for item in schedules
+                if item.day == day
+            ]
+
+            if not day_events:
+                st.caption("No events")
+                continue
+
+            for item in day_events:
+
+                col1, col2 = st.columns([8, 1])
+
+                with col1:
+                    st.write(
+                        f"🕒 **{item.start_time.strftime('%H:%M')} - "
+                        f"{item.end_time.strftime('%H:%M')}**"
+                    )
+                    st.write(
+                        f"📘 **{item.title}** ({item.category})"
+                    )
+
+                with col2:
+                    if st.button(
+                        "🗑",
+                        key=f"delete_{item.id}",
+                    ):
+                        delete_fixed_schedule(
+                            db,
+                            item.id,
+                        )
+                        st.rerun()
+
+            st.divider()
 
     db.close()

@@ -79,6 +79,7 @@ def render_tasks():
 
                     add_task(
                         db,
+                        st.session_state.user.id,
                         title,
                         description,
                         priority,
@@ -100,7 +101,10 @@ def render_tasks():
 
     st.subheader("📋 All Tasks")
 
-    tasks = get_tasks(db)
+    tasks = get_tasks(
+    db,
+    st.session_state.user.id
+)
 
     if len(tasks) == 0:
 

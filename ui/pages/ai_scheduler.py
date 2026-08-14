@@ -23,84 +23,194 @@ based on:
 
     db = SessionLocal()
 
-    col1, col2 = st.columns([1, 1])
+    try:
 
-    with col1:
+        # ==========================================
+        # Logged-in User
+        # ==========================================
 
-        if st.button("🚀 Generate AI Schedule", use_container_width=True):
+        user_id = st.session_state.user.id
 
-            scheduled, unscheduled = generate_schedule(db)
+        col1, col2 = st.columns([1, 1])
 
-            st.success(
-                f"✅ {len(scheduled)} task(s) scheduled successfully."
-            )
+        # ==========================================
+        # Generate AI Schedule
+        # ==========================================
 
-            if unscheduled:
+        with col1:
 
-                st.warning(
-                    f"⚠ {len(unscheduled)} task(s) could not be scheduled."
+            if st.button(
+                "🚀 Generate AI Schedule",
+                use_container_width=True
+            ):
+
+                with st.spinner(
+                    "🤖 AI is generating your schedule..."
+                ):
+
+                    scheduled, unscheduled = generate_schedule(
+                        db,
+                        user_id
+                    )
+
+                st.success(
+                    f"✅ {len(scheduled)} task(s) scheduled successfully."
                 )
 
-                with st.expander("View Unscheduled Tasks"):
+                if unscheduled:
 
-                    for task in unscheduled:
-                        st.write(f"• {task.title}")
+                    st.warning(
+                        f"⚠ {len(unscheduled)} task(s) could not be scheduled."
+                    )
 
-    with col2:
+                    with st.expander(
+                        "View Unscheduled Tasks"
+                    ):
 
-        if st.button("🔄 Refresh", use_container_width=True):
-            st.rerun()
+                        for task in unscheduled:
 
-    st.divider()
+                            st.write(
+                                f"• {task.title}"
+                            )
 
-    st.subheader("📅 Today's AI Schedule")
+        # ==========================================
+        # Refresh
+        # ==========================================
 
-    tasks = get_tasks(db)
+        with col2:
 
-    scheduled_tasks = [
-        t for t in tasks
-        if t.scheduled_start is not None
-    ]
+            if st.button(
+                "🔄 Refresh",
+                use_container_width=True
+            ):
 
-    if not scheduled_tasks:
+                st.rerun()
 
-        st.info(
-            "No tasks scheduled.\n\nClick **Generate AI Schedule**."
+        st.divider()
+
+        # ==========================================
+        # Today's AI Schedule
+        # ==========================================
+
+        st.subheader(
+            "📅 Today's AI Schedule"
         )
 
-    else:
+        # IMPORTANT:
+        # Only get tasks belonging to logged-in user
 
-        scheduled_tasks.sort(
-            key=lambda x: x.scheduled_start
+        tasks = get_tasks(
+            db,
+            user_id
         )
 
-        for task in scheduled_tasks:
+        scheduled_tasks = [
+            task
+            for task in tasks
+            if task.scheduled_start is not None
+        ]
 
-            if task.priority == "High":
-                color = "#ef4444"
-                badge = "🔴 HIGH"
+        # ==========================================
+        # No Schedule
+        # ==========================================
 
-            elif task.priority == "Medium":
-                color = "#f59e0b"
-                badge = "🟡 MEDIUM"
+        if not scheduled_tasks:
 
-            else:
-                color = "#22c55e"
-                badge = "🟢 LOW"
-
-            status = (
-                "✅ Completed"
-                if task.status == "Completed"
-                else "⏳ Pending"
+            st.info(
+                "No tasks scheduled.\n\n"
+                "Click **Generate AI Schedule**."
             )
 
-            st.markdown(
-                f"""
-<div class="task-card" style="border-left:8px solid {color};">
+        # ==========================================
+        # Display Schedule
+        # ==========================================
+
+        else:
+
+            scheduled_tasks.sort(
+                key=lambda x: (
+                    x.scheduled_date or x.due_date,
+                    x.scheduled_start
+                )
+            )
+
+            for task in scheduled_tasks:
+
+                # ------------------------------
+                # Priority
+                # ------------------------------
+
+                if task.priority == "High":
+
+                    color = "#ef4444"
+                    badge = "🔴 HIGH"
+
+                elif task.priority == "Medium":
+
+                    color = "#f59e0b"
+                    badge = "🟡 MEDIUM"
+
+                else:
+
+                    color = "#22c55e"
+                    badge = "🟢 LOW"
+
+                # ------------------------------
+                # Status
+                # ------------------------------
+
+                if task.status == "Completed":
+
+                    status = "✅ Completed"
+
+                else:
+
+                    status = "⏳ Pending"
+
+                # ------------------------------
+                # Safe Date / Time
+                # ------------------------------
+
+                scheduled_date = (
+                    task.scheduled_date
+                    if task.scheduled_date
+                    else "Not Scheduled"
+                )
+
+                if task.scheduled_start:
+
+                    start_time = task.scheduled_start.strftime(
+                        "%H:%M"
+                    )
+
+                else:
+
+                    start_time = "--:--"
+
+                if task.scheduled_end:
+
+                    end_time = task.scheduled_end.strftime(
+                        "%H:%M"
+                    )
+
+                else:
+
+                    end_time = "--:--"
+
+                # ------------------------------
+                # Task Card
+                # ------------------------------
+
+                st.markdown(
+                    f"""
+<div class="task-card"
+     style="border-left:8px solid {color};">
 
 <h3>📌 {task.title}</h3>
 
-<p>{task.description or "No Description"}</p>
+<p>
+{task.description or "No Description"}
+</p>
 
 <hr>
 
@@ -108,34 +218,48 @@ based on:
 
 <br><br>
 
-⏱ Duration : <b>{task.duration} Minutes</b>
+⏱ Duration:
+<b>{task.duration or 0} Minutes</b>
 
 <br>
 
-📅 Scheduled Date : <b>{task.scheduled_date}</b>
+📅 Scheduled Date:
+<b>{scheduled_date}</b>
 
 <br>
 
-🕒 Time :
+🕒 Time:
 <b>
-{task.scheduled_start.strftime("%H:%M")}
+{start_time}
  →
-{task.scheduled_end.strftime("%H:%M")}
+{end_time}
 </b>
 
 <br>
 
-🎯 Deadline :
-<b>{task.due_date}</b>
+🎯 Deadline:
+<b>
+{task.due_date or "No Deadline"}
+</b>
 
 <br>
 
-📌 Status :
-<b>{status}</b>
+📌 Status:
+<b>
+{status}
+</b>
 
 </div>
 """,
-                unsafe_allow_html=True,
-            )
+                    unsafe_allow_html=True
+                )
 
-    db.close()
+    except Exception as e:
+
+        st.error(
+            f"❌ AI Scheduler Error: {e}"
+        )
+
+    finally:
+
+        db.close()

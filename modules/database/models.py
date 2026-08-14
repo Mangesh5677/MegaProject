@@ -1,4 +1,5 @@
 from datetime import date
+from sqlalchemy import ForeignKey
 
 from sqlalchemy import (
     Column,
@@ -39,7 +40,7 @@ class Settings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    user_id = Column(Integer, unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
 
     # Notifications
     email_notification = Column(Boolean, default=True)
@@ -79,39 +80,32 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    title = Column(String, nullable=False)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False
+    )
 
+    title = Column(String, nullable=False)
     description = Column(String)
 
     priority = Column(String)
-
     status = Column(String, default="Pending")
 
     due_date = Column(Date)
-
     due_time = Column(Time)
 
-    # Duration (Minutes)
     duration = Column(Integer)
 
-    # AI Scheduler
     scheduled_date = Column(Date, nullable=True)
-
     scheduled_start = Column(Time, nullable=True)
-
     scheduled_end = Column(Time, nullable=True)
 
-    # Email Reminder
     email = Column(String, nullable=True)
 
-    # Reminder Flags
     reminder_24h_sent = Column(Boolean, default=False)
-
     reminder_2h_sent = Column(Boolean, default=False)
-
     reminder_30m_sent = Column(Boolean, default=False)
-
-
 # ==========================================
 # Fixed Weekly Timetable
 # ==========================================
@@ -121,19 +115,20 @@ class FixedSchedule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False
+    )
+
     day = Column(String, nullable=False)
-
     title = Column(String, nullable=False)
-
     category = Column(String)
 
     start_time = Column(Time)
-
     end_time = Column(Time)
 
     locked = Column(Boolean, default=True)
-
-
 # ==========================================
 # AI Generated Schedule
 # ==========================================
@@ -142,6 +137,12 @@ class ScheduledTask(Base):
     __tablename__ = "scheduled_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False
+    )
 
     task_id = Column(Integer)
 

@@ -16,6 +16,7 @@ def render_sidebar():
             "Analytics",
             "Settings",
         ],
+        index=2,   # Default page = Fixed Timetable
     )
 
     return page
