@@ -63,6 +63,8 @@ def delete_fixed_schedule(
         db.delete(event)
         db.commit()
 
+    return event
+
 
 # ==========================================
 # Task CRUD
@@ -151,6 +153,10 @@ def delete_task(
         db.delete(task)
         db.commit()
 
+        return task
+
+    return None
+
 
 def complete_task(
     db,
@@ -170,6 +176,7 @@ def complete_task(
         task.status = "Completed"
 
         db.commit()
+        db.refresh(task)
 
         return task
 
@@ -197,6 +204,11 @@ def mark_24h_reminder_sent(
     if task:
         task.reminder_24h_sent = True
         db.commit()
+        db.refresh(task)
+
+        return task
+
+    return None
 
 
 def mark_2h_reminder_sent(
@@ -216,6 +228,11 @@ def mark_2h_reminder_sent(
     if task:
         task.reminder_2h_sent = True
         db.commit()
+        db.refresh(task)
+
+        return task
+
+    return None
 
 
 def mark_30m_reminder_sent(
@@ -235,3 +252,8 @@ def mark_30m_reminder_sent(
     if task:
         task.reminder_30m_sent = True
         db.commit()
+        db.refresh(task)
+
+        return task
+
+    return None

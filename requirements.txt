@@ -20,3 +20,4 @@ plyer
 plotly
 streamlit-mic-recorder
 gTTS
+requests

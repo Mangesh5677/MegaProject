@@ -1,769 +1,847 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
 from modules.database.database import SessionLocal
+
 from modules.database.crud import (
     get_tasks,
     get_fixed_schedules,
 )
-from modules.ai.chatbot import get_chatbot_response
+
+from modules.ai.chatbot import (
+    get_chatbot_response,
+)
+
+from modules.ai.resources import (
+    get_task_resources,
+)
 
 
 # ============================================================
-# CHATBOT CSS
+# Helper: Get User ID
 # ============================================================
 
-def chatbot_css():
+def get_user_id(user):
+
+    if hasattr(user, "id"):
+
+        return user.id
+
+    if isinstance(user, dict):
+
+        return user.get("id")
+
+    return None
+
+
+# ============================================================
+# Helper: Display YouTube Resources
+# ============================================================
+
+def display_youtube_resources(resources):
+
+    videos = resources.get(
+        "youtube_videos",
+        []
+    )
+
+    youtube_search = resources.get(
+        "youtube_search"
+    )
+
+    if videos:
+
+        st.markdown(
+            "#### 🎥 Recommended YouTube Videos"
+        )
+
+        # Display maximum 3 videos
+        for video in videos[:3]:
+
+            title = video.get(
+                "title",
+                "YouTube Video"
+            )
+
+            channel = video.get(
+                "channel",
+                "YouTube"
+            )
+
+            url = video.get(
+                "url"
+            )
+
+            thumbnail = video.get(
+                "thumbnail"
+            )
+
+            # ----------------------------------------------
+            # Video Card
+            # ----------------------------------------------
+
+            video_col1, video_col2 = st.columns(
+                [1, 2]
+            )
+
+            with video_col1:
+
+                if thumbnail:
+
+                    st.image(
+                        thumbnail,
+                        use_container_width=True
+                    )
+
+            with video_col2:
+
+                st.markdown(
+                    f"**{title}**"
+                )
+
+                st.caption(
+                    f"📺 {channel}"
+                )
+
+                if url:
+
+                    st.link_button(
+                        "▶️ Watch on YouTube",
+                        url,
+                        use_container_width=True
+                    )
+
+            st.divider()
+
+    elif youtube_search:
+
+        st.info(
+            "No direct videos were found. "
+            "You can search YouTube for this task."
+        )
+
+        st.link_button(
+            "🔎 Search YouTube",
+            youtube_search,
+            use_container_width=True
+        )
+
+
+# ============================================================
+# Helper: Display LeetCode Resources
+# ============================================================
+
+def display_leetcode_resources(resources):
+
+    leetcode = resources.get(
+        "leetcode"
+    )
+
+    if not leetcode:
+
+        return
 
     st.markdown(
-        """
-        <style>
-
-        .chatbot-title {
-            font-size: 30px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .chatbot-subtitle {
-            font-size: 15px;
-            opacity: 0.7;
-            margin-bottom: 15px;
-        }
-
-        .ai-online {
-            color: #22c55e;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .info-box {
-            padding: 16px;
-            border-radius: 14px;
-            background: rgba(99, 102, 241, 0.08);
-            border: 1px solid rgba(99, 102, 241, 0.15);
-            margin-bottom: 15px;
-        }
-
-        .footer-text {
-            text-align: center;
-            opacity: 0.45;
-            font-size: 11px;
-            margin-top: 20px;
-        }
-
-        </style>
-        """,
-        unsafe_allow_html=True,
+        "#### 💻 LeetCode Practice"
     )
+
+    st.info(
+        "This task looks like a coding/DSA task. "
+        "Here are relevant LeetCode resources."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.link_button(
+            "🚀 Open LeetCode",
+            leetcode["problemset"],
+            use_container_width=True
+        )
+
+    with col2:
+
+        st.link_button(
+            "🔎 Search Problems",
+            leetcode["search"],
+            use_container_width=True
+        )
 
 
 # ============================================================
-# VOICE ASSISTANT
+# Helper: Display Resources For Task
 # ============================================================
 
-def voice_assistant():
+def display_task_resources(task):
 
-    components.html(
-        """
-        <style>
-
-        body {
-            margin: 0;
-            background: transparent;
-            font-family: Arial, sans-serif;
-        }
-
-        .voice-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 8px;
-        }
-
-        .mic-button {
-            width: 65px;
-            height: 65px;
-            border: none;
-            border-radius: 50%;
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #6366f1,
-                    #8b5cf6
-                );
-
-            color: white;
-            font-size: 27px;
-            cursor: pointer;
-
-            box-shadow:
-                0 8px 25px
-                rgba(99, 102, 241, 0.40);
-
-            transition:
-                transform 0.2s ease;
-        }
-
-        .mic-button:hover {
-            transform: scale(1.08);
-        }
-
-        .mic-button.listening {
-            background:
-                linear-gradient(
-                    135deg,
-                    #ef4444,
-                    #f97316
-                );
-
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-
-            0% {
-                box-shadow:
-                    0 0 0 0
-                    rgba(239, 68, 68, 0.55);
-            }
-
-            70% {
-                box-shadow:
-                    0 0 0 18px
-                    rgba(239, 68, 68, 0);
-            }
-
-            100% {
-                box-shadow:
-                    0 0 0 0
-                    rgba(239, 68, 68, 0);
-            }
-        }
-
-        #status {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #888;
-            text-align: center;
-            line-height: 1.4;
-        }
-
-        </style>
-
-
-        <div class="voice-container">
-
-            <button
-                id="mic"
-                class="mic-button"
-                onclick="startListening()"
-            >
-                🎤
-            </button>
-
-            <div id="status">
-                Tap microphone to speak
-            </div>
-
-        </div>
-
-
-        <script>
-
-        const mic =
-            document.getElementById("mic");
-
-        const status =
-            document.getElementById("status");
-
-
-        function startListening() {
-
-            const SpeechRecognition =
-                window.SpeechRecognition ||
-                window.webkitSpeechRecognition;
-
-
-            if (!SpeechRecognition) {
-
-                status.innerText =
-                    "❌ Voice recognition is not supported";
-
-                return;
-            }
-
-
-            const recognition =
-                new SpeechRecognition();
-
-
-            recognition.lang =
-                "en-IN";
-
-
-            recognition.interimResults =
-                false;
-
-
-            recognition.continuous =
-                false;
-
-
-            mic.classList.add(
-                "listening"
-            );
-
-
-            status.innerText =
-                "🎙️ Listening...";
-
-
-            recognition.start();
-
-
-            recognition.onresult =
-                function(event) {
-
-                    const text =
-                        event.results[0][0]
-                        .transcript;
-
-
-                    status.innerText =
-                        "✅ " + text;
-
-
-                    navigator.clipboard
-                        .writeText(text);
-
-                };
-
-
-            recognition.onerror =
-                function() {
-
-                    status.innerText =
-                        "❌ Could not understand voice";
-
-                    mic.classList.remove(
-                        "listening"
-                    );
-
-                };
-
-
-            recognition.onend =
-                function() {
-
-                    mic.classList.remove(
-                        "listening"
-                    );
-
-                };
-
-        }
-
-        </script>
-        """,
-        height=125,
+    resources = get_task_resources(
+        task
     )
+
+    resource_type = resources.get(
+        "type",
+        "general"
+    )
+
+    # ========================================================
+    # Fitness
+    # ========================================================
+
+    if resource_type == "fitness":
+
+        st.markdown(
+            "### 🏋️ Fitness Resources"
+        )
+
+        st.caption(
+            "Helpful workout videos related to this task."
+        )
+
+        display_youtube_resources(
+            resources
+        )
+
+    # ========================================================
+    # Coding
+    # ========================================================
+
+    elif resource_type == "coding":
+
+        st.markdown(
+            "### 💻 Coding Resources"
+        )
+
+        display_leetcode_resources(
+            resources
+        )
+
+        display_youtube_resources(
+            resources
+        )
+
+    # ========================================================
+    # Study
+    # ========================================================
+
+    elif resource_type == "study":
+
+        st.markdown(
+            "### 📚 Learning Resources"
+        )
+
+        display_youtube_resources(
+            resources
+        )
+
+    # ========================================================
+    # General
+    # ========================================================
+
+    else:
+
+        st.markdown(
+            "### 🔎 Helpful Resources"
+        )
+
+        display_youtube_resources(
+            resources
+        )
 
 
 # ============================================================
-# TEXT TO SPEECH
-# ============================================================
-
-def speak_response(text):
-
-    # Clean response for speech
-    safe_text = str(text)
-
-    safe_text = (
-        safe_text
-        .replace("\\", "")
-        .replace('"', "")
-        .replace("'", "")
-        .replace("\n", " ")
-        .replace("`", "")
-    )
-
-    # Limit very long responses
-    safe_text = safe_text[:1500]
-
-    # Escape JavaScript-sensitive characters
-    safe_text = (
-        safe_text
-        .replace("\\", "\\\\")
-        .replace('"', '\\"')
-        .replace("\n", " ")
-    )
-
-    components.html(
-        f"""
-        <script>
-
-        const responseText =
-            "{safe_text}";
-
-        if (
-            "speechSynthesis"
-            in window
-        ) {{
-
-            window.speechSynthesis.cancel();
-
-            const speech =
-                new SpeechSynthesisUtterance(
-                    responseText
-                );
-
-            speech.lang =
-                "en-IN";
-
-            speech.rate =
-                1;
-
-            speech.pitch =
-                1;
-
-            speech.volume =
-                1;
-
-            window.speechSynthesis.speak(
-                speech
-            );
-
-        }}
-
-        </script>
-        """,
-        height=0,
-    )
-
-
-# ============================================================
-# MAIN CHATBOT
+# Chatbot Page
 # ============================================================
 
 def render_chatbot():
 
-    # Load CSS
-    chatbot_css()
+    # ========================================================
+    # Page Header
+    # ========================================================
 
+    st.title(
+        "🤖 AI Productivity Assistant"
+    )
+
+    st.caption(
+        "Your personal AI assistant for tasks, schedules, "
+        "learning and productivity."
+    )
 
     # ========================================================
-    # SESSION USER
+    # Session State
+    # ========================================================
+
+    if "chat_messages" not in st.session_state:
+
+        st.session_state.chat_messages = []
+
+    # ========================================================
+    # Logged-in User
     # ========================================================
 
     user = st.session_state.user
 
-
-    # ========================================================
-    # HEADER
-    # ========================================================
-
-    st.markdown(
-        "## 🤖 AI Productivity Assistant"
+    user_id = get_user_id(
+        user
     )
 
-    st.caption(
-        "Your intelligent assistant for tasks, timetable, "
-        "planning and productivity."
-    )
+    if user_id is None:
 
-    st.success(
-        "🟢 AI Assistant Online"
-    )
+        st.error(
+            "Unable to identify the logged-in user."
+        )
 
+        return
 
     # ========================================================
-    # DATABASE
+    # Database
     # ========================================================
 
     db = SessionLocal()
 
-
     try:
 
         # ====================================================
-        # GET USER TASKS
+        # Get User Data
         # ====================================================
 
         tasks = get_tasks(
             db,
-            user.id,
+            user_id
         )
 
-
-        # ====================================================
-        # GET USER TIMETABLE
-        # ====================================================
-
-        timetable = get_fixed_schedules(
+        fixed_schedules = get_fixed_schedules(
             db,
-            user.id,
+            user_id
         )
 
+        # ====================================================
+        # Statistics
+        # ====================================================
+
+        total_tasks = len(
+            tasks
+        )
+
+        pending_tasks = sum(
+            1
+            for task in tasks
+            if task.status != "Completed"
+        )
+
+        completed_tasks = sum(
+            1
+            for task in tasks
+            if task.status == "Completed"
+        )
 
         # ====================================================
-        # TASK CONTEXT
+        # Statistics Cards
         # ====================================================
 
-        if tasks:
+        col1, col2, col3 = st.columns(
+            3
+        )
 
-            task_text = "\n".join(
-                [
-                    (
-                        f"- {task.title} | "
-                        f"Priority: {task.priority} | "
-                        f"Status: {task.status} | "
-                        f"Due: {task.due_date} "
-                        f"{task.due_time or ''} | "
-                        f"Duration: "
-                        f"{task.duration or 0} minutes"
-                    )
-                    for task in tasks
-                ]
+        with col1:
+
+            st.metric(
+                "📋 Total Tasks",
+                total_tasks
             )
 
-        else:
+        with col2:
 
-            task_text = (
-                "No tasks available."
+            st.metric(
+                "⏳ Pending",
+                pending_tasks
             )
 
+        with col3:
 
-        # ====================================================
-        # TIMETABLE CONTEXT
-        # ====================================================
-
-        if timetable:
-
-            timetable_text = "\n".join(
-                [
-                    (
-                        f"- {item.day} | "
-                        f"{item.start_time} - "
-                        f"{item.end_time} | "
-                        f"{item.title} | "
-                        f"{item.category or 'Other'}"
-                    )
-                    for item in timetable
-                ]
+            st.metric(
+                "✅ Completed",
+                completed_tasks
             )
 
-        else:
-
-            timetable_text = (
-                "No fixed timetable available."
-            )
-
+        st.divider()
 
         # ====================================================
-        # CHAT HISTORY
+        # Quick Questions
         # ====================================================
 
-        if "chat_history" not in st.session_state:
+        st.subheader(
+            "⚡ Quick Questions"
+        )
 
-            st.session_state.chat_history = []
+        q1, q2, q3, q4 = st.columns(
+            4
+        )
 
-
-        # ====================================================
-        # SIDEBAR
-        # ====================================================
-
-        with st.sidebar:
-
-            st.markdown(
-                "### 🤖 AI Assistant"
-            )
-
-
-            # ------------------------------------------------
-            # CLEAR CHAT
-            # ------------------------------------------------
+        with q1:
 
             if st.button(
-                "🧹 Clear Conversation",
-                use_container_width=True,
+                "📅 Today's Tasks",
+                use_container_width=True
             ):
 
-                st.session_state.chat_history = []
-
-                st.rerun()
-
-
-            st.divider()
-
-
-            # ------------------------------------------------
-            # VOICE ASSISTANT
-            # ------------------------------------------------
-
-            st.markdown(
-                "### 🎤 Voice Assistant"
-            )
-
-            st.info(
-                "🎤 Talk to your AI Assistant\n\n"
-                "Click the microphone and speak."
-            )
-
-            voice_assistant()
-
-            st.caption(
-                "Voice input works best in "
-                "Google Chrome or Microsoft Edge."
-            )
-
-
-            st.divider()
-
-
-            # ------------------------------------------------
-            # USER CONTEXT
-            # ------------------------------------------------
-
-            st.markdown(
-                "### 📊 Your AI Context"
-            )
-
-            st.write(
-                f"📋 Tasks: **{len(tasks)}**"
-            )
-
-            st.write(
-                f"📅 Timetable entries: **{len(timetable)}**"
-            )
-
-
-        # ====================================================
-        # WELCOME SCREEN
-        # ====================================================
-
-        if not st.session_state.chat_history:
-
-            st.info(
-                "👋 Welcome!\n\n"
-                "I'm your personal AI productivity assistant. "
-                "Ask me anything about your tasks, timetable "
-                "or daily planning."
-            )
-
-
-            st.markdown(
-                "### ✨ Try asking"
-            )
-
-
-            # =================================================
-            # QUICK QUESTIONS
-            # =================================================
-
-            col1, col2, col3 = st.columns(3)
-
-
-            with col1:
-
-                if st.button(
-                    "📋 What tasks should I do today?",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.quick_question = (
-                        "What tasks should I do today?"
-                    )
-
-                    st.rerun()
-
-
-            with col2:
-
-                if st.button(
-                    "📅 When am I free today?",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.quick_question = (
-                        "When am I free today?"
-                    )
-
-                    st.rerun()
-
-
-            with col3:
-
-                if st.button(
-                    "⭐ Which task is most important?",
-                    use_container_width=True,
-                ):
-
-                    st.session_state.quick_question = (
-                        "Which task is most important?"
-                    )
-
-                    st.rerun()
-
-
-        # ====================================================
-        # DISPLAY CHAT HISTORY
-        # ====================================================
-
-        for message in st.session_state.chat_history:
-
-            if message["role"] == "user":
-
-                avatar = "🧑"
-
-            else:
-
-                avatar = "🤖"
-
-
-            with st.chat_message(
-                message["role"],
-                avatar=avatar,
-            ):
-
-                st.markdown(
-                    message["content"]
+                st.session_state.quick_question = (
+                    "What tasks should I do today?"
                 )
 
+        with q2:
 
-        # ====================================================
-        # QUICK QUESTION
-        # ====================================================
-
-        prompt = st.session_state.pop(
-            "quick_question",
-            None,
-        )
-
-
-        # ====================================================
-        # CHAT INPUT
-        # ====================================================
-
-        chat_prompt = st.chat_input(
-            "💬 Ask your AI productivity assistant..."
-        )
-
-
-        if chat_prompt:
-
-            prompt = chat_prompt
-
-
-        # ====================================================
-        # PROCESS USER MESSAGE
-        # ====================================================
-
-        if prompt:
-
-            # -----------------------------------------------
-            # SAVE USER MESSAGE
-            # -----------------------------------------------
-
-            st.session_state.chat_history.append(
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            )
-
-
-            # -----------------------------------------------
-            # DISPLAY USER MESSAGE
-            # -----------------------------------------------
-
-            with st.chat_message(
-                "user",
-                avatar="🧑",
+            if st.button(
+                "🔥 Priorities",
+                use_container_width=True
             ):
 
-                st.write(
-                    prompt
+                st.session_state.quick_question = (
+                    "Which tasks should I prioritize?"
                 )
 
+        with q3:
 
-            # -----------------------------------------------
-            # AI RESPONSE
-            # -----------------------------------------------
+            if st.button(
+                "⏰ Schedule",
+                use_container_width=True
+            ):
+
+                st.session_state.quick_question = (
+                    "Help me plan my remaining tasks "
+                    "around my fixed timetable."
+                )
+
+        with q4:
+
+            if st.button(
+                "📊 Progress",
+                use_container_width=True
+            ):
+
+                st.session_state.quick_question = (
+                    "How is my productivity progress?"
+                )
+
+        st.divider()
+
+        # ====================================================
+        # Chat Header
+        # ====================================================
+
+        st.subheader(
+            "💬 Chat with your AI Assistant"
+        )
+
+        # ====================================================
+        # Welcome Message
+        # ========================================================
+
+        if not st.session_state.chat_messages:
 
             with st.chat_message(
                 "assistant",
-                avatar="🤖",
+                avatar="🤖"
             ):
 
-                with st.spinner(
-                    "🤖 Thinking..."
-                ):
+                st.markdown(
+                    """
+### 👋 Hello!
 
-                    try:
+I'm your **AI Productivity Assistant**.
 
-                        response = get_chatbot_response(
-                            prompt,
-                            task_text,
-                            timetable_text,
-                        )
+I can help you with:
 
-                    except Exception as e:
+- 📋 Understand your tasks
+- 📅 Plan today's work
+- 🔥 Find high-priority tasks
+- ⏰ Plan around your college timetable
+- 🎯 Improve productivity
+- 📊 Review your progress
+- 🎥 Find useful YouTube learning videos
+- 💻 Find LeetCode practice resources
 
-                        response = (
-                            "❌ I couldn't generate "
-                            "a response right now.\n\n"
-                            f"Error: {str(e)}"
-                        )
+### Try asking me:
 
+> **What tasks should I do today?**
 
-                # -------------------------------------------
-                # DISPLAY RESPONSE
-                # -------------------------------------------
+or
 
-                st.write(
-                    response
+> **Help me with my LeetCode task.**
+
+or
+
+> **Give me a workout video for my gym task.**
+"""
                 )
 
+        # ====================================================
+        # Display Chat History
+        # ====================================================
 
-                # -------------------------------------------
-                # VOICE RESPONSE
-                # -------------------------------------------
+        for message in st.session_state.chat_messages:
 
-                try:
+            if message["role"] == "user":
 
-                    speak_response(
-                        response
+                with st.chat_message(
+                    "user",
+                    avatar="🧑"
+                ):
+
+                    st.markdown(
+                        message["content"]
                     )
 
-                except Exception:
+            else:
 
-                    pass
+                with st.chat_message(
+                    "assistant",
+                    avatar="🤖"
+                ):
 
+                    st.markdown(
+                        message["content"]
+                    )
 
-            # -----------------------------------------------
-            # SAVE AI RESPONSE
-            # -----------------------------------------------
+        # ====================================================
+        # Quick Question
+        # ====================================================
 
-            st.session_state.chat_history.append(
+        quick_question = st.session_state.pop(
+            "quick_question",
+            None
+        )
+
+        # ====================================================
+        # Chat Input
+        # ====================================================
+
+        user_prompt = st.chat_input(
+            "Ask about your tasks, schedule or learning..."
+        )
+
+        if quick_question:
+
+            user_prompt = quick_question
+
+        # ====================================================
+        # Generate AI Response
+        # ====================================================
+
+        if user_prompt:
+
+            # ------------------------------------------------
+            # Save User Message
+            # ------------------------------------------------
+
+            st.session_state.chat_messages.append(
                 {
-                    "role": "assistant",
-                    "content": response,
+                    "role": "user",
+                    "content": user_prompt
                 }
             )
 
+            # ------------------------------------------------
+            # Display User Message
+            # ------------------------------------------------
+
+            with st.chat_message(
+                "user",
+                avatar="🧑"
+            ):
+
+                st.markdown(
+                    user_prompt
+                )
+
+            # ------------------------------------------------
+            # AI Response
+            # ------------------------------------------------
+
+            with st.chat_message(
+                "assistant",
+                avatar="🤖"
+            ):
+
+                with st.spinner(
+                    "🤔 Thinking about your tasks..."
+                ):
+
+                    response = get_chatbot_response(
+                        user_message=user_prompt,
+                        tasks=tasks,
+                        fixed_schedules=fixed_schedules,
+                        chat_history=(
+                            st.session_state
+                            .chat_messages[:-1]
+                        )
+                    )
+
+                st.markdown(
+                    response
+                )
+
+            # ------------------------------------------------
+            # Save AI Response
+            # ------------------------------------------------
+
+            st.session_state.chat_messages.append(
+                {
+                    "role": "assistant",
+                    "content": response
+                }
+            )
+
+            # ------------------------------------------------
+            # Resource Recommendation
+            # ------------------------------------------------
+
+            st.divider()
+
+            st.subheader(
+                "🎯 Recommended Resources"
+            )
+
+            pending_tasks = [
+                task
+                for task in tasks
+                if task.status != "Completed"
+            ]
+
+            if not pending_tasks:
+
+                st.success(
+                    "🎉 You have completed all your tasks!"
+                )
+
+            else:
+
+                # --------------------------------------------
+                # Show resources for matching tasks
+                # --------------------------------------------
+
+                for task in pending_tasks:
+
+                    task_title = (
+                        task.title
+                        or "Untitled Task"
+                    )
+
+                    task_description = (
+                        task.description
+                        or ""
+                    )
+
+                    # Combine text
+                    task_text = (
+                        f"{task_title} "
+                        f"{task_description}"
+                    ).lower()
+
+                    # ----------------------------------------
+                    # Determine whether this task is relevant
+                    # ----------------------------------------
+
+                    user_text = (
+                        user_prompt
+                        .lower()
+                    )
+
+                    relevant = False
+
+                    # Match task title
+                    if task_title.lower() in user_text:
+
+                        relevant = True
+
+                    # Match words from task
+                    task_words = [
+                        word
+                        for word in task_title.lower().split()
+                        if len(word) > 3
+                    ]
+
+                    if any(
+                        word in user_text
+                        for word in task_words
+                    ):
+
+                        relevant = True
+
+                    # General questions
+                    general_questions = [
+                        "today",
+                        "tasks",
+                        "prioritize",
+                        "priority",
+                        "schedule",
+                        "productivity",
+                        "progress",
+                    ]
+
+                    if any(
+                        keyword in user_text
+                        for keyword in general_questions
+                    ):
+
+                        relevant = True
+
+                    # ----------------------------------------
+                    # Show Resource Card
+                    # ----------------------------------------
+
+                    if relevant:
+
+                        with st.container(
+                            border=True
+                        ):
+
+                            st.markdown(
+                                f"## 📝 {task_title}"
+                            )
+
+                            if task_description:
+
+                                st.caption(
+                                    task_description
+                                )
+
+                            # --------------------------------
+                            # Task Metadata
+                            # --------------------------------
+
+                            meta1, meta2, meta3 = st.columns(
+                                3
+                            )
+
+                            with meta1:
+
+                                st.write(
+                                    f"🔥 {task.priority}"
+                                )
+
+                            with meta2:
+
+                                if task.due_date:
+
+                                    st.write(
+                                        f"📅 {task.due_date}"
+                                    )
+
+                            with meta3:
+
+                                if task.duration:
+
+                                    st.write(
+                                        f"⏱️ {task.duration} min"
+                                    )
+
+                            # --------------------------------
+                            # Generate Resources
+                            # --------------------------------
+
+                            try:
+
+                                with st.spinner(
+                                    "🔎 Finding useful resources..."
+                                ):
+
+                                    display_task_resources(
+                                        task
+                                    )
+
+                            except Exception as resource_error:
+
+                                st.warning(
+                                    "Unable to load resources "
+                                    "for this task."
+                                )
+
+                                st.caption(
+                                    str(resource_error)
+                                )
 
         # ====================================================
-        # FOOTER
+        # Resource Explorer
         # ====================================================
 
-        st.caption(
-            "🤖 AI Productivity Manager • "
-            "Smart Planning • Voice Assistant"
+        st.divider()
+
+        with st.expander(
+            "🎯 Explore Resources For My Tasks"
+        ):
+
+            st.caption(
+                "Get YouTube videos and coding resources "
+                "for your pending tasks."
+            )
+
+            pending_tasks = [
+                task
+                for task in tasks
+                if task.status != "Completed"
+            ]
+
+            if not pending_tasks:
+
+                st.success(
+                    "🎉 No pending tasks!"
+                )
+
+            else:
+
+                selected_task = st.selectbox(
+                    "Choose a task",
+                    pending_tasks,
+                    format_func=lambda task: (
+                        f"{task.title} "
+                        f"({task.priority})"
+                    )
+                )
+
+                if st.button(
+                    "🔎 Find Resources",
+                    use_container_width=True
+                ):
+
+                    with st.spinner(
+                        "🔎 Finding resources..."
+                    ):
+
+                        try:
+
+                            display_task_resources(
+                                selected_task
+                            )
+
+                        except Exception as e:
+
+                            st.error(
+                                f"Unable to find resources: {e}"
+                            )
+
+        # ====================================================
+        # Clear Conversation
+        # ====================================================
+
+        if st.session_state.chat_messages:
+
+            st.divider()
+
+            if st.button(
+                "🗑️ Clear Conversation",
+                use_container_width=True
+            ):
+
+                st.session_state.chat_messages = []
+
+                st.rerun()
+
+    except Exception as e:
+
+        st.error(
+            f"Unable to load chatbot data: {e}"
         )
-
 
     finally:
 
