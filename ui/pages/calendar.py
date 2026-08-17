@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import date, datetime, time
+from datetime import date, time
 
 from modules.database.database import SessionLocal
 from modules.database.crud import get_tasks
@@ -7,41 +7,67 @@ from modules.database.crud import get_tasks
 
 def render_calendar():
 
+    # =====================================================
+    # PAGE TITLE
+    # =====================================================
+
     st.title("📅 Calendar")
 
+    st.caption(
+        "View your tasks according to their scheduled date."
+    )
+
+
+    # =====================================================
+    # LOGGED-IN USER
+    # =====================================================
+
     user = st.session_state.user
+
+
+    # =====================================================
+    # DATABASE
+    # =====================================================
 
     db = SessionLocal()
 
     try:
 
-        # =====================================================
-        # Get ONLY logged-in user's tasks
-        # =====================================================
+        # =================================================
+        # GET ONLY LOGGED-IN USER'S TASKS
+        # =================================================
 
         tasks = get_tasks(
             db,
             user.id
         )
 
-        # =====================================================
-        # Calendar Date
-        # =====================================================
+
+        # =================================================
+        # DATE SELECTOR
+        # =================================================
 
         selected_date = st.date_input(
-            "Select Date",
+            "📅 Select Date",
             value=date.today()
         )
 
+
         st.divider()
+
+
+        # =================================================
+        # SELECTED DATE TITLE
+        # =================================================
 
         st.subheader(
             f"📋 Tasks for {selected_date.strftime('%d %B %Y')}"
         )
 
-        # =====================================================
-        # Filter tasks for selected date
-        # =====================================================
+
+        # =================================================
+        # FILTER TASKS
+        # =================================================
 
         selected_tasks = [
             task
@@ -49,9 +75,10 @@ def render_calendar():
             if task.due_date == selected_date
         ]
 
-        # =====================================================
-        # No Tasks
-        # =====================================================
+
+        # =================================================
+        # NO TASKS
+        # =================================================
 
         if not selected_tasks:
 
@@ -61,26 +88,52 @@ def render_calendar():
 
             return
 
-        # =====================================================
-        # Display Tasks
-        # =====================================================
 
-        for task in sorted(
+        # =================================================
+        # TASK COUNT
+        # =================================================
+
+        st.caption(
+            f"📊 Total tasks: {len(selected_tasks)}"
+        )
+
+
+        # =================================================
+        # SORT TASKS BY TIME
+        # =================================================
+
+        sorted_tasks = sorted(
             selected_tasks,
             key=lambda x: x.due_time or time(23, 59)
-        ):
+        )
+
+
+        # =================================================
+        # DISPLAY TASKS
+        # =================================================
+
+        for task in sorted_tasks:
+
+            # ---------------------------------------------
+            # PRIORITY
+            # ---------------------------------------------
 
             if task.priority == "High":
 
-                badge = "🔴 HIGH"
+                priority = "🔴 HIGH"
 
             elif task.priority == "Medium":
 
-                badge = "🟡 MEDIUM"
+                priority = "🟡 MEDIUM"
 
             else:
 
-                badge = "🟢 LOW"
+                priority = "🟢 LOW"
+
+
+            # ---------------------------------------------
+            # STATUS
+            # ---------------------------------------------
 
             if task.status == "Completed":
 
@@ -90,51 +143,92 @@ def render_calendar():
 
                 status = "⏳ Pending"
 
-            due_time = (
-                task.due_time.strftime("%H:%M")
-                if task.due_time
-                else "No time"
-            )
 
-            duration = (
-                f"{task.duration} minutes"
-                if task.duration
-                else "Not specified"
-            )
+            # ---------------------------------------------
+            # DUE TIME
+            # ---------------------------------------------
 
-            st.markdown(
-                f"""
-                <div class="task-card">
+            if task.due_time:
 
-                    <h3>📌 {task.title}</h3>
+                due_time = task.due_time.strftime(
+                    "%H:%M"
+                )
 
-                    <p>
-                        {task.description or "No description"}
-                    </p>
+            else:
 
-                    <hr>
+                due_time = "No time specified"
 
-                    <b>{badge}</b>
 
-                    <br><br>
+            # ---------------------------------------------
+            # DURATION
+            # ---------------------------------------------
 
-                    🕒 Due Time:
-                    <b>{due_time}</b>
+            if task.duration:
 
-                    <br>
+                duration = (
+                    f"{task.duration} minutes"
+                )
 
-                    ⏱ Duration:
-                    <b>{duration}</b>
+            else:
 
-                    <br>
+                duration = "Not specified"
 
-                    📌 Status:
-                    <b>{status}</b>
 
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            # =================================================
+            # TASK DISPLAY
+            # =================================================
+
+            with st.container(border=True):
+
+                st.markdown(
+                    f"### 📌 {task.title}"
+                )
+
+
+                # Description
+
+                if task.description:
+
+                    st.write(
+                        task.description
+                    )
+
+                else:
+
+                    st.caption(
+                        "No description"
+                    )
+
+
+                st.divider()
+
+
+                # Task information
+
+                col1, col2 = st.columns(2)
+
+
+                with col1:
+
+                    st.write(
+                        f"⭐ Priority: **{priority}**"
+                    )
+
+                    st.write(
+                        f"🕒 Due Time: **{due_time}**"
+                    )
+
+
+                with col2:
+
+                    st.write(
+                        f"⏱ Duration: **{duration}**"
+                    )
+
+                    st.write(
+                        f"📌 Status: **{status}**"
+                    )
+
 
     finally:
 

@@ -1,174 +1,770 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
-try:
-    from streamlit_mic_recorder import speech_to_text
-    MIC_AVAILABLE = True
-except ImportError:
-    MIC_AVAILABLE = False
-
-from modules.ai.voice import speak
 from modules.database.database import SessionLocal
-from modules.ai.chatbot import build_context
-from modules.ai.groq_service import ask_ai
+from modules.database.crud import (
+    get_tasks,
+    get_fixed_schedules,
+)
+from modules.ai.chatbot import get_chatbot_response
 
+
+# ============================================================
+# CHATBOT CSS
+# ============================================================
+
+def chatbot_css():
+
+    st.markdown(
+        """
+        <style>
+
+        .chatbot-title {
+            font-size: 30px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .chatbot-subtitle {
+            font-size: 15px;
+            opacity: 0.7;
+            margin-bottom: 15px;
+        }
+
+        .ai-online {
+            color: #22c55e;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .info-box {
+            padding: 16px;
+            border-radius: 14px;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            margin-bottom: 15px;
+        }
+
+        .footer-text {
+            text-align: center;
+            opacity: 0.45;
+            font-size: 11px;
+            margin-top: 20px;
+        }
+
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# VOICE ASSISTANT
+# ============================================================
+
+def voice_assistant():
+
+    components.html(
+        """
+        <style>
+
+        body {
+            margin: 0;
+            background: transparent;
+            font-family: Arial, sans-serif;
+        }
+
+        .voice-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+
+        .mic-button {
+            width: 65px;
+            height: 65px;
+            border: none;
+            border-radius: 50%;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #6366f1,
+                    #8b5cf6
+                );
+
+            color: white;
+            font-size: 27px;
+            cursor: pointer;
+
+            box-shadow:
+                0 8px 25px
+                rgba(99, 102, 241, 0.40);
+
+            transition:
+                transform 0.2s ease;
+        }
+
+        .mic-button:hover {
+            transform: scale(1.08);
+        }
+
+        .mic-button.listening {
+            background:
+                linear-gradient(
+                    135deg,
+                    #ef4444,
+                    #f97316
+                );
+
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0% {
+                box-shadow:
+                    0 0 0 0
+                    rgba(239, 68, 68, 0.55);
+            }
+
+            70% {
+                box-shadow:
+                    0 0 0 18px
+                    rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow:
+                    0 0 0 0
+                    rgba(239, 68, 68, 0);
+            }
+        }
+
+        #status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        </style>
+
+
+        <div class="voice-container">
+
+            <button
+                id="mic"
+                class="mic-button"
+                onclick="startListening()"
+            >
+                🎤
+            </button>
+
+            <div id="status">
+                Tap microphone to speak
+            </div>
+
+        </div>
+
+
+        <script>
+
+        const mic =
+            document.getElementById("mic");
+
+        const status =
+            document.getElementById("status");
+
+
+        function startListening() {
+
+            const SpeechRecognition =
+                window.SpeechRecognition ||
+                window.webkitSpeechRecognition;
+
+
+            if (!SpeechRecognition) {
+
+                status.innerText =
+                    "❌ Voice recognition is not supported";
+
+                return;
+            }
+
+
+            const recognition =
+                new SpeechRecognition();
+
+
+            recognition.lang =
+                "en-IN";
+
+
+            recognition.interimResults =
+                false;
+
+
+            recognition.continuous =
+                false;
+
+
+            mic.classList.add(
+                "listening"
+            );
+
+
+            status.innerText =
+                "🎙️ Listening...";
+
+
+            recognition.start();
+
+
+            recognition.onresult =
+                function(event) {
+
+                    const text =
+                        event.results[0][0]
+                        .transcript;
+
+
+                    status.innerText =
+                        "✅ " + text;
+
+
+                    navigator.clipboard
+                        .writeText(text);
+
+                };
+
+
+            recognition.onerror =
+                function() {
+
+                    status.innerText =
+                        "❌ Could not understand voice";
+
+                    mic.classList.remove(
+                        "listening"
+                    );
+
+                };
+
+
+            recognition.onend =
+                function() {
+
+                    mic.classList.remove(
+                        "listening"
+                    );
+
+                };
+
+        }
+
+        </script>
+        """,
+        height=125,
+    )
+
+
+# ============================================================
+# TEXT TO SPEECH
+# ============================================================
+
+def speak_response(text):
+
+    # Clean response for speech
+    safe_text = str(text)
+
+    safe_text = (
+        safe_text
+        .replace("\\", "")
+        .replace('"', "")
+        .replace("'", "")
+        .replace("\n", " ")
+        .replace("`", "")
+    )
+
+    # Limit very long responses
+    safe_text = safe_text[:1500]
+
+    # Escape JavaScript-sensitive characters
+    safe_text = (
+        safe_text
+        .replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", " ")
+    )
+
+    components.html(
+        f"""
+        <script>
+
+        const responseText =
+            "{safe_text}";
+
+        if (
+            "speechSynthesis"
+            in window
+        ) {{
+
+            window.speechSynthesis.cancel();
+
+            const speech =
+                new SpeechSynthesisUtterance(
+                    responseText
+                );
+
+            speech.lang =
+                "en-IN";
+
+            speech.rate =
+                1;
+
+            speech.pitch =
+                1;
+
+            speech.volume =
+                1;
+
+            window.speechSynthesis.speak(
+                speech
+            );
+
+        }}
+
+        </script>
+        """,
+        height=0,
+    )
+
+
+# ============================================================
+# MAIN CHATBOT
+# ============================================================
 
 def render_chatbot():
 
-    st.title("💬 AI Productivity Assistant")
+    # Load CSS
+    chatbot_css()
 
-    st.markdown("""
-Welcome! I can help you with:
 
-- 📋 Task Management
-- 📅 Study Planning
-- 🤖 AI Scheduling
-- ⏰ Deadlines
-- 📈 Productivity Analysis
-- 🎯 Time Management
-""")
+    # ========================================================
+    # SESSION USER
+    # ========================================================
+
+    user = st.session_state.user
+
+
+    # ========================================================
+    # HEADER
+    # ========================================================
+
+    st.markdown(
+        "## 🤖 AI Productivity Assistant"
+    )
+
+    st.caption(
+        "Your intelligent assistant for tasks, timetable, "
+        "planning and productivity."
+    )
+
+    st.success(
+        "🟢 AI Assistant Online"
+    )
+
+
+    # ========================================================
+    # DATABASE
+    # ========================================================
 
     db = SessionLocal()
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
 
-    # ==========================
-    # Quick Questions
-    # ==========================
+    try:
 
-    st.subheader("⚡ Quick Questions")
+        # ====================================================
+        # GET USER TASKS
+        # ====================================================
 
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button("📋 Pending Tasks", use_container_width=True):
-            st.session_state["quick_prompt"] = "Show my pending tasks."
-
-    with col2:
-        if st.button("📅 Plan Today", use_container_width=True):
-            st.session_state["quick_prompt"] = "Create today's study plan."
-
-    with col3:
-        if st.button("📈 Productivity", use_container_width=True):
-            st.session_state["quick_prompt"] = "Analyze my productivity."
-
-    col4, col5, col6 = st.columns(3)
-
-    with col4:
-        if st.button("🎯 Highest Priority", use_container_width=True):
-            st.session_state["quick_prompt"] = "Which task should I do first?"
-
-    with col5:
-        if st.button("⏰ Deadlines", use_container_width=True):
-            st.session_state["quick_prompt"] = "Show upcoming deadlines."
-
-    with col6:
-        if st.button("🧠 Study Tips", use_container_width=True):
-            st.session_state["quick_prompt"] = "Give me study tips."
-
-    st.divider()
-
-    # ==========================
-    # Voice Assistant
-    # ==========================
-
-    st.subheader("🎤 Voice Assistant")
-
-    voice_text = speech_to_text(
-        language="en",
-        start_prompt="🎙 Start Recording",
-        stop_prompt="⏹ Stop Recording",
-        just_once=True,
-        use_container_width=True,
-    )
-
-    if voice_text:
-        st.success(f"🎤 You said: {voice_text}")
-        st.session_state["quick_prompt"] = voice_text
-
-    st.divider()
-
-    # ==========================
-    # Chat History
-    # ==========================
-
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    prompt = st.chat_input("Ask anything...")
-
-    if not prompt:
-        prompt = st.session_state.pop("quick_prompt", None)
-
-    if prompt:
-
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": prompt
-            }
+        tasks = get_tasks(
+            db,
+            user.id,
         )
 
-        with st.chat_message("user"):
-            st.markdown(prompt)
 
-        context = build_context(db)
+        # ====================================================
+        # GET USER TIMETABLE
+        # ====================================================
 
-        with st.chat_message("assistant"):
+        timetable = get_fixed_schedules(
+            db,
+            user.id,
+        )
 
-            with st.spinner("🤖 AI is thinking..."):
 
-                try:
+        # ====================================================
+        # TASK CONTEXT
+        # ====================================================
 
-                    answer = ask_ai(
-                        context,
-                        prompt
+        if tasks:
+
+            task_text = "\n".join(
+                [
+                    (
+                        f"- {task.title} | "
+                        f"Priority: {task.priority} | "
+                        f"Status: {task.status} | "
+                        f"Due: {task.due_date} "
+                        f"{task.due_time or ''} | "
+                        f"Duration: "
+                        f"{task.duration or 0} minutes"
+                    )
+                    for task in tasks
+                ]
+            )
+
+        else:
+
+            task_text = (
+                "No tasks available."
+            )
+
+
+        # ====================================================
+        # TIMETABLE CONTEXT
+        # ====================================================
+
+        if timetable:
+
+            timetable_text = "\n".join(
+                [
+                    (
+                        f"- {item.day} | "
+                        f"{item.start_time} - "
+                        f"{item.end_time} | "
+                        f"{item.title} | "
+                        f"{item.category or 'Other'}"
+                    )
+                    for item in timetable
+                ]
+            )
+
+        else:
+
+            timetable_text = (
+                "No fixed timetable available."
+            )
+
+
+        # ====================================================
+        # CHAT HISTORY
+        # ====================================================
+
+        if "chat_history" not in st.session_state:
+
+            st.session_state.chat_history = []
+
+
+        # ====================================================
+        # SIDEBAR
+        # ====================================================
+
+        with st.sidebar:
+
+            st.markdown(
+                "### 🤖 AI Assistant"
+            )
+
+
+            # ------------------------------------------------
+            # CLEAR CHAT
+            # ------------------------------------------------
+
+            if st.button(
+                "🧹 Clear Conversation",
+                use_container_width=True,
+            ):
+
+                st.session_state.chat_history = []
+
+                st.rerun()
+
+
+            st.divider()
+
+
+            # ------------------------------------------------
+            # VOICE ASSISTANT
+            # ------------------------------------------------
+
+            st.markdown(
+                "### 🎤 Voice Assistant"
+            )
+
+            st.info(
+                "🎤 Talk to your AI Assistant\n\n"
+                "Click the microphone and speak."
+            )
+
+            voice_assistant()
+
+            st.caption(
+                "Voice input works best in "
+                "Google Chrome or Microsoft Edge."
+            )
+
+
+            st.divider()
+
+
+            # ------------------------------------------------
+            # USER CONTEXT
+            # ------------------------------------------------
+
+            st.markdown(
+                "### 📊 Your AI Context"
+            )
+
+            st.write(
+                f"📋 Tasks: **{len(tasks)}**"
+            )
+
+            st.write(
+                f"📅 Timetable entries: **{len(timetable)}**"
+            )
+
+
+        # ====================================================
+        # WELCOME SCREEN
+        # ====================================================
+
+        if not st.session_state.chat_history:
+
+            st.info(
+                "👋 Welcome!\n\n"
+                "I'm your personal AI productivity assistant. "
+                "Ask me anything about your tasks, timetable "
+                "or daily planning."
+            )
+
+
+            st.markdown(
+                "### ✨ Try asking"
+            )
+
+
+            # =================================================
+            # QUICK QUESTIONS
+            # =================================================
+
+            col1, col2, col3 = st.columns(3)
+
+
+            with col1:
+
+                if st.button(
+                    "📋 What tasks should I do today?",
+                    use_container_width=True,
+                ):
+
+                    st.session_state.quick_question = (
+                        "What tasks should I do today?"
                     )
 
-                except Exception as e:
+                    st.rerun()
 
-                    answer = f"❌ Error:\n\n{e}"
 
-                st.markdown(answer)
+            with col2:
 
-                # ==========================
-                # Voice Output
-                # ==========================
+                if st.button(
+                    "📅 When am I free today?",
+                    use_container_width=True,
+                ):
+
+                    st.session_state.quick_question = (
+                        "When am I free today?"
+                    )
+
+                    st.rerun()
+
+
+            with col3:
+
+                if st.button(
+                    "⭐ Which task is most important?",
+                    use_container_width=True,
+                ):
+
+                    st.session_state.quick_question = (
+                        "Which task is most important?"
+                    )
+
+                    st.rerun()
+
+
+        # ====================================================
+        # DISPLAY CHAT HISTORY
+        # ====================================================
+
+        for message in st.session_state.chat_history:
+
+            if message["role"] == "user":
+
+                avatar = "🧑"
+
+            else:
+
+                avatar = "🤖"
+
+
+            with st.chat_message(
+                message["role"],
+                avatar=avatar,
+            ):
+
+                st.markdown(
+                    message["content"]
+                )
+
+
+        # ====================================================
+        # QUICK QUESTION
+        # ====================================================
+
+        prompt = st.session_state.pop(
+            "quick_question",
+            None,
+        )
+
+
+        # ====================================================
+        # CHAT INPUT
+        # ====================================================
+
+        chat_prompt = st.chat_input(
+            "💬 Ask your AI productivity assistant..."
+        )
+
+
+        if chat_prompt:
+
+            prompt = chat_prompt
+
+
+        # ====================================================
+        # PROCESS USER MESSAGE
+        # ====================================================
+
+        if prompt:
+
+            # -----------------------------------------------
+            # SAVE USER MESSAGE
+            # -----------------------------------------------
+
+            st.session_state.chat_history.append(
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            )
+
+
+            # -----------------------------------------------
+            # DISPLAY USER MESSAGE
+            # -----------------------------------------------
+
+            with st.chat_message(
+                "user",
+                avatar="🧑",
+            ):
+
+                st.write(
+                    prompt
+                )
+
+
+            # -----------------------------------------------
+            # AI RESPONSE
+            # -----------------------------------------------
+
+            with st.chat_message(
+                "assistant",
+                avatar="🤖",
+            ):
+
+                with st.spinner(
+                    "🤖 Thinking..."
+                ):
+
+                    try:
+
+                        response = get_chatbot_response(
+                            prompt,
+                            task_text,
+                            timetable_text,
+                        )
+
+                    except Exception as e:
+
+                        response = (
+                            "❌ I couldn't generate "
+                            "a response right now.\n\n"
+                            f"Error: {str(e)}"
+                        )
+
+
+                # -------------------------------------------
+                # DISPLAY RESPONSE
+                # -------------------------------------------
+
+                st.write(
+                    response
+                )
+
+
+                # -------------------------------------------
+                # VOICE RESPONSE
+                # -------------------------------------------
 
                 try:
 
-                    audio_path = speak(answer)
+                    speak_response(
+                        response
+                    )
 
-                    with open(audio_path, "rb") as audio_file:
-                        st.audio(
-                            audio_file.read(),
-                            format="audio/mp3"
-                        )
+                except Exception:
 
-                except Exception as e:
-                    st.warning(f"Voice Error: {e}")
+                    pass
 
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer
-            }
+
+            # -----------------------------------------------
+            # SAVE AI RESPONSE
+            # -----------------------------------------------
+
+            st.session_state.chat_history.append(
+                {
+                    "role": "assistant",
+                    "content": response,
+                }
+            )
+
+
+        # ====================================================
+        # FOOTER
+        # ====================================================
+
+        st.caption(
+            "🤖 AI Productivity Manager • "
+            "Smart Planning • Voice Assistant"
         )
 
-    st.divider()
 
-    col1, col2 = st.columns(2)
+    finally:
 
-    with col1:
-        st.metric(
-            "💬 Messages",
-            len(st.session_state.messages)
-        )
-
-    with col2:
-        if st.button("🗑 Clear Chat", use_container_width=True):
-            st.session_state.messages = []
-            st.rerun()
-
-    db.close()
+        db.close()

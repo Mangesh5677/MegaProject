@@ -210,11 +210,12 @@ box-shadow:0 10px 20px rgba(0,0,0,.25);
                 ):
 
                     delete_task(
-                        db,
-                        task.id
+                    db,
+                    st.session_state.user.id,
+                    task.id
                     )
 
-                    st.success("Task Deleted")
+                    st.success("✅ Task deleted successfully.")
 
                     st.rerun()
 
