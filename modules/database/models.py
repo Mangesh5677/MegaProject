@@ -8,6 +8,7 @@ from sqlalchemy import (
     Date,
     Time,
     Boolean,
+    ForeignKey,
 )
 
 from .database import Base
@@ -29,6 +30,34 @@ class User(Base):
     password = Column(String, nullable=False)
 
     created_at = Column(Date, default=date.today)
+
+# ==========================================
+# Rewards Model
+# ==========================================
+
+class Reward(Base):
+    __tablename__ = "rewards"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        unique=True,
+        nullable=False
+    )
+
+    points = Column(Integer, default=0)
+
+    level = Column(Integer, default=1)
+
+    streak = Column(Integer, default=0)
+
+    tasks_completed = Column(Integer, default=0)
+
+    perfect_days = Column(Integer, default=0)
+
+    last_completion_date = Column(Date, nullable=True)
 
 
 # ==========================================

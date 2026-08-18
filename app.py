@@ -88,6 +88,7 @@ from ui.pages.analytics import render_analytics
 from ui.pages.ai_scheduler import render_ai_scheduler
 from ui.pages.ai_advisor import render_ai_advisor
 from ui.pages.chatbot import render_chatbot
+from ui.pages.rewards import render_rewards
 
 # ==========================
 # Sidebar
@@ -140,6 +141,10 @@ elif page == "Analytics":
 elif page == "AI Advisor":
 
     render_ai_advisor()
+
+elif page == "Rewards":
+
+    render_rewards()
 
 elif page == "Settings":
 

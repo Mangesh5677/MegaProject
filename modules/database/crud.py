@@ -1,4 +1,7 @@
+from datetime import datetime, time
+
 from .models import FixedSchedule, Task
+from modules.rewards.reward_service import award_task_completion
 
 
 # ==========================================
@@ -172,10 +175,25 @@ def complete_task(
         .first()
     )
 
-    if task:
+    if task and task.status != "Completed":
         task.status = "Completed"
 
-        db.commit()
+        completed_before_deadline = False
+
+        if task.due_date:
+            deadline = datetime.combine(
+                task.due_date,
+                task.due_time or time.max,
+            )
+            completed_before_deadline = datetime.now() <= deadline
+
+        award_task_completion(
+            db=db,
+            user_id=user_id,
+            priority=task.priority or "Low",
+            completed_before_deadline=completed_before_deadline,
+        )
+
         db.refresh(task)
 
         return task

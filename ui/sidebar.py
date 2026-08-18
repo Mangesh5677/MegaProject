@@ -14,6 +14,7 @@ def render_sidebar():
             "AI Scheduler",
             "Chatbot",
             "Analytics",
+            "Rewards",
             "Settings",
         ],
         index=2,   # Default page = Fixed Timetable
