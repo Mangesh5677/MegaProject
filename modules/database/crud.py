@@ -1,12 +1,9 @@
-from datetime import datetime, time
-
-from .models import FixedSchedule, Task
-from modules.rewards.reward_service import award_task_completion
+from .models import FixedSchedule, Task, ScheduledTask
 
 
-# ==========================================
-# Fixed Schedule CRUD
-# ==========================================
+# ============================================================
+# FIXED SCHEDULE CRUD
+# ============================================================
 
 def add_fixed_schedule(
     db,
@@ -35,6 +32,7 @@ def add_fixed_schedule(
 
 
 def get_fixed_schedules(db, user_id):
+
     return (
         db.query(FixedSchedule)
         .filter(
@@ -51,27 +49,31 @@ def get_fixed_schedules(db, user_id):
 def delete_fixed_schedule(
     db,
     user_id,
-    schedule_id
+    schedule_id,
 ):
+
     event = (
         db.query(FixedSchedule)
         .filter(
             FixedSchedule.id == schedule_id,
-            FixedSchedule.user_id == user_id
+            FixedSchedule.user_id == user_id,
         )
         .first()
     )
 
     if event:
+
         db.delete(event)
         db.commit()
 
-    return event
+        return True
+
+    return False
 
 
-# ==========================================
-# Task CRUD
-# ==========================================
+# ============================================================
+# TASK CRUD
+# ============================================================
 
 def add_task(
     db,
@@ -84,6 +86,7 @@ def add_task(
     duration,
     email,
 ):
+
     task = Task(
         user_id=user_id,
         title=title,
@@ -94,7 +97,6 @@ def add_task(
         duration=duration,
         email=email,
 
-        # Reminder flags
         reminder_24h_sent=False,
         reminder_2h_sent=False,
         reminder_30m_sent=False,
@@ -110,6 +112,7 @@ def add_task(
 
 
 def get_tasks(db, user_id):
+
     return (
         db.query(Task)
         .filter(
@@ -124,11 +127,12 @@ def get_tasks(db, user_id):
 
 
 def get_pending_tasks(db, user_id):
+
     return (
         db.query(Task)
         .filter(
             Task.user_id == user_id,
-            Task.status == "Pending"
+            Task.status == "Pending",
         )
         .order_by(
             Task.due_date,
@@ -138,89 +142,82 @@ def get_pending_tasks(db, user_id):
     )
 
 
+def get_completed_tasks(db, user_id):
+
+    return (
+        db.query(Task)
+        .filter(
+            Task.user_id == user_id,
+            Task.status == "Completed",
+        )
+        .order_by(
+            Task.due_date,
+            Task.due_time
+        )
+        .all()
+    )
+
+
+def get_task_by_id(
+    db,
+    user_id,
+    task_id,
+):
+
+    return (
+        db.query(Task)
+        .filter(
+            Task.id == task_id,
+            Task.user_id == user_id,
+        )
+        .first()
+    )
+
+
 def delete_task(
     db,
     user_id,
-    task_id
+    task_id,
 ):
+
     task = (
         db.query(Task)
         .filter(
             Task.id == task_id,
-            Task.user_id == user_id
+            Task.user_id == user_id,
         )
         .first()
     )
 
     if task:
+
         db.delete(task)
         db.commit()
 
-        return task
+        return True
 
-    return None
+    return False
 
 
 def complete_task(
     db,
     user_id,
-    task_id
+    task_id,
 ):
+
     task = (
         db.query(Task)
         .filter(
             Task.id == task_id,
-            Task.user_id == user_id
+            Task.user_id == user_id,
         )
         .first()
     )
 
-    if task and task.status != "Completed":
+    if task:
+
         task.status = "Completed"
 
-        completed_before_deadline = False
-
-        if task.due_date:
-            deadline = datetime.combine(
-                task.due_date,
-                task.due_time or time.max,
-            )
-            completed_before_deadline = datetime.now() <= deadline
-
-        award_task_completion(
-            db=db,
-            user_id=user_id,
-            priority=task.priority or "Low",
-            completed_before_deadline=completed_before_deadline,
-        )
-
-        db.refresh(task)
-
-        return task
-
-    return None
-
-
-# ==========================================
-# Reminder CRUD
-# ==========================================
-
-def mark_24h_reminder_sent(
-    db,
-    user_id,
-    task_id
-):
-    task = (
-        db.query(Task)
-        .filter(
-            Task.id == task_id,
-            Task.user_id == user_id
-        )
-        .first()
-    )
-
-    if task:
-        task.reminder_24h_sent = True
         db.commit()
         db.refresh(task)
 
@@ -229,22 +226,25 @@ def mark_24h_reminder_sent(
     return None
 
 
-def mark_2h_reminder_sent(
+def reopen_task(
     db,
     user_id,
-    task_id
+    task_id,
 ):
+
     task = (
         db.query(Task)
         .filter(
             Task.id == task_id,
-            Task.user_id == user_id
+            Task.user_id == user_id,
         )
         .first()
     )
 
     if task:
-        task.reminder_2h_sent = True
+
+        task.status = "Pending"
+
         db.commit()
         db.refresh(task)
 
@@ -253,25 +253,112 @@ def mark_2h_reminder_sent(
     return None
 
 
-def mark_30m_reminder_sent(
+# ============================================================
+# AI SCHEDULED TASK CRUD
+# ============================================================
+
+def get_scheduled_tasks(
     db,
     user_id,
-    task_id
 ):
-    task = (
-        db.query(Task)
+
+    return (
+        db.query(ScheduledTask)
         .filter(
-            Task.id == task_id,
-            Task.user_id == user_id
+            ScheduledTask.user_id == user_id
         )
-        .first()
+        .order_by(
+            ScheduledTask.date,
+            ScheduledTask.start_time
+        )
+        .all()
     )
 
-    if task:
-        task.reminder_30m_sent = True
-        db.commit()
-        db.refresh(task)
 
-        return task
+def delete_scheduled_tasks(
+    db,
+    user_id,
+):
 
-    return None
+    tasks = (
+        db.query(ScheduledTask)
+        .filter(
+            ScheduledTask.user_id == user_id
+        )
+        .all()
+    )
+
+    for task in tasks:
+
+        db.delete(task)
+
+    db.commit()
+
+
+# ============================================================
+# USER-SPECIFIC DELETE ALL TASKS
+# ============================================================
+
+def delete_all_tasks(
+    db,
+    user_id,
+):
+
+    tasks = (
+        db.query(Task)
+        .filter(
+            Task.user_id == user_id
+        )
+        .all()
+    )
+
+    for task in tasks:
+
+        db.delete(task)
+
+    db.commit()
+
+
+# ============================================================
+# USER-SPECIFIC TASK STATISTICS
+# ============================================================
+
+def get_task_statistics(
+    db,
+    user_id,
+):
+
+    tasks = get_tasks(db, user_id)
+
+    total = len(tasks)
+
+    completed = len(
+        [
+            task
+            for task in tasks
+            if task.status == "Completed"
+        ]
+    )
+
+    pending = len(
+        [
+            task
+            for task in tasks
+            if task.status == "Pending"
+        ]
+    )
+
+    productivity = 0
+
+    if total > 0:
+
+        productivity = round(
+            (completed / total) * 100
+        )
+
+    return {
+        "total": total,
+        "completed": completed,
+        "pending": pending,
+        "productivity": productivity,
+    }
