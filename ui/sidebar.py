@@ -14,6 +14,7 @@ def render_sidebar():
             "AI Scheduler",
             "Chatbot",
             "Analytics",
+            "Career Prep",
             "Rewards",
             "Settings",
         ],

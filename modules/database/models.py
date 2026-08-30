@@ -1,10 +1,12 @@
-from datetime import date
+from datetime import date, datetime
 
+from altair import DateTime
 from sqlalchemy import (
     Column,
     Integer,
     String,
     Date,
+    DateTime,
     Time,
     Boolean,
     ForeignKey,
@@ -29,7 +31,7 @@ class User(Base):
 
     password = Column(String, nullable=False)
 
-    created_at = Column(Date, default=date.today)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 # ============================================================
@@ -145,6 +147,11 @@ class Task(Base):
     # Duration in minutes
 
     duration = Column(Integer)
+
+    task_type = Column(
+        String,
+        default="Once"
+    )
 
     # -------------------------
     # AI Scheduler
@@ -530,7 +537,6 @@ class Reward(Base):
     )
 
     # Every reward belongs to one user
-
     user_id = Column(
         Integer,
         ForeignKey("users.id"),
@@ -547,16 +553,40 @@ class Reward(Base):
         default=0
     )
 
+    level = Column(
+        Integer,
+        default=1
+    )
+
+    streak = Column(
+        Integer,
+        default=0
+    )
+
+    tasks_completed = Column(
+        Integer,
+        default=0
+    )
+
+    perfect_days = Column(
+        Integer,
+        default=0
+    )
+
+    last_completion_date = Column(
+        Date,
+        nullable=True
+    )
+
     reason = Column(
         String,
-        nullable=False
+        nullable=True
     )
 
     created_at = Column(
-        Date,
-        default=date.today
+        DateTime,
+        default=datetime.utcnow
     )
-
 
 # ============================================================
 # USER REWARD SUMMARY

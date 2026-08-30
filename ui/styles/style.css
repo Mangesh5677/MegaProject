@@ -1,378 +1,859 @@
-/* ==========================================================
-   AI Productivity Manager
-   Professional Glassmorphism Theme
-========================================================== */
+/* =========================================================
+   AI PRODUCTIVITY MANAGER
+   COLORFUL + CLEAN + READABLE UI
+   ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+/* =========================================================
+   GLOBAL APP
+   ========================================================= */
 
-/* ==========================================================
-   Global
-========================================================== */
+.stApp {
+    background:
+        radial-gradient(
+            circle at 0% 0%,
+            rgba(99, 102, 241, 0.10),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 100% 0%,
+            rgba(14, 165, 233, 0.10),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 50% 100%,
+            rgba(236, 72, 153, 0.08),
+            transparent 35%
+        ),
+        #f8fafc !important;
 
-html,
-body,
-[class*="css"]{
-    font-family:'Poppins',sans-serif;
+    color: #1e293b !important;
 }
 
-.stApp{
-    background:linear-gradient(135deg,#0f172a,#111827,#1e293b);
-    color:white;
+
+/* =========================================================
+   MAIN CONTENT
+   ========================================================= */
+
+.main .block-container {
+    max-width: 1400px;
+    padding-top: 2rem;
+    padding-bottom: 4rem;
 }
 
-.block-container{
-    padding-top:1.5rem;
-    padding-left:2rem;
-    padding-right:2rem;
-    padding-bottom:2rem;
+
+/* =========================================================
+   FORCE MAIN TEXT TO DARK COLOR
+   FIX WHITE TEXT PROBLEM
+   ========================================================= */
+
+.main p,
+.main span,
+.main label,
+.main div,
+.main li,
+.main td,
+.main th {
+    color: #334155;
 }
 
-h1,h2,h3,h4{
-    color:white;
-    font-weight:700;
+
+/* Markdown text */
+
+[data-testid="stMarkdownContainer"] {
+    color: #334155 !important;
 }
 
-p,label{
-    color:#d1d5db;
+[data-testid="stMarkdownContainer"] p {
+    color: #475569 !important;
 }
 
-/* ==========================================================
-   Sidebar
-========================================================== */
-
-section[data-testid="stSidebar"]{
-    background:#0b1120;
-    border-right:1px solid rgba(255,255,255,.08);
+[data-testid="stMarkdownContainer"] li {
+    color: #475569 !important;
 }
 
-section[data-testid="stSidebar"] *{
-    color:white;
+
+/* =========================================================
+   HEADINGS
+   ========================================================= */
+
+h1 {
+    color: #172554 !important;
+
+    font-weight: 800 !important;
+
+    letter-spacing: -1px;
 }
 
-/* ==========================================================
-   Metric Cards
-========================================================== */
+h2 {
+    color: #1e3a8a !important;
 
-[data-testid="stMetric"]{
-
-    background:linear-gradient(135deg,#2563eb,#7c3aed);
-
-    padding:20px;
-
-    border-radius:20px;
-
-    box-shadow:0 15px 35px rgba(0,0,0,.35);
-
-    transition:.3s;
+    font-weight: 750 !important;
 }
 
-[data-testid="stMetric"]:hover{
+h3 {
+    color: #334155 !important;
 
-    transform:translateY(-6px);
-
-    box-shadow:0 20px 45px rgba(37,99,235,.45);
-
+    font-weight: 700 !important;
 }
 
-[data-testid="stMetricLabel"]{
 
-    color:white;
+/* =========================================================
+   PAGE TITLE
+   ========================================================= */
 
-    font-weight:600;
+.page-title {
+    font-size: 46px;
 
+    font-weight: 850;
+
+    background:
+        linear-gradient(
+            135deg,
+            #2563eb,
+            #7c3aed,
+            #ec4899
+        );
+
+    -webkit-background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+
+    margin-bottom: 8px;
 }
 
-[data-testid="stMetricValue"]{
 
-    color:white;
+/* =========================================================
+   CAPTION
+   ========================================================= */
 
-    font-size:34px;
-
-    font-weight:700;
-
+[data-testid="stCaptionContainer"] {
+    color: #64748b !important;
 }
 
-/* ==========================================================
-   Glass Cards
-========================================================== */
 
-.glass-card{
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
 
-    background:rgba(255,255,255,.08);
+section[data-testid="stSidebar"] {
 
-    backdrop-filter:blur(18px);
+    background:
+        linear-gradient(
+            180deg,
+            #312e81 0%,
+            #4338ca 45%,
+            #6d28d9 100%
+        ) !important;
 
-    border:1px solid rgba(255,255,255,.12);
-
-    border-radius:22px;
-
-    padding:20px;
-
-    text-align:center;
-
-    margin-bottom:20px;
-
-    box-shadow:0 15px 35px rgba(0,0,0,.35);
-
-    transition:.35s;
-
+    border: none !important;
 }
 
-.glass-card:hover{
 
-    transform:translateY(-6px);
+/* Sidebar text MUST stay white */
 
-    box-shadow:0 25px 45px rgba(0,0,0,.45);
-
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div,
+section[data-testid="stSidebar"] button {
+    color: white !important;
 }
 
-.card-icon{
 
-    font-size:38px;
+/* Sidebar title */
 
-    margin-bottom:10px;
-
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: white !important;
 }
 
-.card-title{
 
-    color:#d1d5db;
+/* Sidebar navigation */
 
-    font-size:18px;
+section[data-testid="stSidebar"] button {
 
-    font-weight:500;
+    border-radius: 12px !important;
 
+    border: none !important;
+
+    background: transparent !important;
+
+    transition: 0.25s ease;
 }
 
-.card-value{
+section[data-testid="stSidebar"] button:hover {
 
-    color:white;
+    background: rgba(255,255,255,0.15) !important;
 
-    font-size:38px;
-
-    font-weight:700;
-
-    margin-top:8px;
-
+    transform: translateX(4px);
 }
 
-/* ==========================================================
-   Schedule Card
-========================================================== */
 
-.schedule-card{
+/* =========================================================
+   DASHBOARD GLASS CARDS
+   ========================================================= */
 
-    background:#1e293b;
+.glass-card {
 
-    border-left:6px solid #3b82f6;
+    min-height: 185px;
 
-    border-radius:16px;
+    padding: 28px 20px;
 
-    padding:18px;
+    border-radius: 24px;
 
-    margin-bottom:15px;
+    background: rgba(255,255,255,0.92);
 
-    color:white;
+    border: 1px solid #e2e8f0;
 
-    box-shadow:0 10px 20px rgba(0,0,0,.25);
+    box-shadow:
+        0 10px 30px rgba(15,23,42,0.08);
 
+    text-align: center;
+
+    transition: all 0.3s ease;
 }
 
-/* ==========================================================
-   Task Card
-========================================================== */
 
-.task-card{
+.glass-card:hover {
 
-    background:#1e293b;
+    transform: translateY(-7px);
 
-    border-radius:18px;
-
-    padding:20px;
-
-    margin-bottom:20px;
-
-    box-shadow:0 12px 30px rgba(0,0,0,.25);
-
-    transition:.3s;
-
+    box-shadow:
+        0 20px 40px rgba(79,70,229,0.15);
 }
 
-.task-card:hover{
 
-    transform:translateY(-6px);
+.card-icon {
 
-    box-shadow:0 20px 40px rgba(37,99,235,.35);
+    font-size: 42px;
 
+    margin-bottom: 10px;
 }
 
-/* ==========================================================
-   Buttons
-========================================================== */
 
-.stButton>button{
+.card-title {
 
-    width:100%;
+    font-size: 17px;
 
-    height:46px;
+    font-weight: 700;
 
-    border-radius:12px;
+    color: #64748b !important;
 
-    border:none;
-
-    font-weight:600;
-
-    color:white;
-
-    background:linear-gradient(135deg,#2563eb,#3b82f6);
-
-    transition:.3s;
-
+    margin-bottom: 8px;
 }
 
-.stButton>button:hover{
 
-    background:linear-gradient(135deg,#1d4ed8,#2563eb);
+.card-value {
 
-    transform:scale(1.02);
+    font-size: 42px;
 
+    font-weight: 850;
+
+    background:
+        linear-gradient(
+            135deg,
+            #2563eb,
+            #7c3aed,
+            #ec4899
+        );
+
+    -webkit-background-clip: text;
+
+    -webkit-text-fill-color: transparent;
 }
 
-/* ==========================================================
-   Forms
-========================================================== */
+
+/* =========================================================
+   SCHEDULE CARD
+   ========================================================= */
+
+.schedule-card {
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff,
+            #f8faff
+        );
+
+    border-radius: 18px;
+
+    padding: 22px;
+
+    margin-bottom: 15px;
+
+    border-left: 6px solid #6366f1;
+
+    box-shadow:
+        0 8px 25px rgba(30,64,175,0.08);
+
+    color: #334155 !important;
+
+    transition: 0.25s ease;
+}
+
+
+.schedule-card:hover {
+
+    transform: translateX(6px);
+
+    border-left-color: #ec4899;
+
+    box-shadow:
+        0 15px 30px rgba(236,72,153,0.12);
+}
+
+
+.schedule-card b {
+
+    color: #1e3a8a !important;
+}
+
+
+.schedule-card span,
+.schedule-card p {
+
+    color: #475569 !important;
+}
+
+
+/* =========================================================
+   TASK CARD
+   ========================================================= */
+
+.task-card {
+
+    background: #ffffff;
+
+    border-radius: 20px;
+
+    padding: 24px;
+
+    margin-bottom: 18px;
+
+    border: 1px solid #e2e8f0;
+
+    box-shadow:
+        0 8px 25px rgba(15,23,42,0.07);
+
+    color: #334155 !important;
+
+    transition: 0.3s ease;
+}
+
+
+.task-card:hover {
+
+    transform: translateY(-5px);
+
+    box-shadow:
+        0 18px 40px rgba(79,70,229,0.13);
+}
+
+
+.task-card h3 {
+
+    color: #1e3a8a !important;
+}
+
+
+.task-card p {
+
+    color: #64748b !important;
+}
+
+
+.task-card b {
+
+    color: #334155 !important;
+}
+
+
+/* =========================================================
+   AI SCHEDULE
+   ========================================================= */
+
+.ai-schedule-card {
+
+    background: #ffffff;
+
+    border-radius: 20px;
+
+    padding: 25px;
+
+    margin-bottom: 20px;
+
+    border: 1px solid #e2e8f0;
+
+    box-shadow:
+        0 8px 25px rgba(15,23,42,0.08);
+}
+
+
+.ai-schedule-card h3 {
+
+    color: #1e3a8a !important;
+}
+
+
+.ai-schedule-card p {
+
+    color: #64748b !important;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.stButton > button {
+
+    width: 100%;
+
+    border-radius: 12px !important;
+
+    border: none !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #4f46e5,
+            #7c3aed
+        ) !important;
+
+    color: white !important;
+
+    font-weight: 700 !important;
+
+    min-height: 44px;
+
+    box-shadow:
+        0 7px 18px rgba(79,70,229,0.22);
+
+    transition: all 0.25s ease;
+}
+
+
+.stButton > button:hover {
+
+    background:
+        linear-gradient(
+            135deg,
+            #7c3aed,
+            #ec4899
+        ) !important;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 12px 25px rgba(236,72,153,0.25);
+}
+
+
+/* =========================================================
+   INPUT FIELDS
+   ========================================================= */
 
 .stTextInput input,
+.stTextArea textarea,
 .stNumberInput input,
 .stDateInput input,
-.stTimeInput input,
-.stTextArea textarea{
+.stTimeInput input {
 
-    border-radius:12px !important;
+    background: #ffffff !important;
 
-    border:1px solid rgba(255,255,255,.15);
+    color: #1e293b !important;
 
+    border: 2px solid #e2e8f0 !important;
+
+    border-radius: 12px !important;
+
+    min-height: 44px;
+
+    transition: 0.2s ease;
 }
 
-.stSelectbox{
 
-    border-radius:12px;
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder {
 
+    color: #94a3b8 !important;
 }
 
-/* ==========================================================
-   Progress Bar
-========================================================== */
 
-.stProgress>div>div{
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stNumberInput input:focus,
+.stDateInput input:focus,
+.stTimeInput input:focus {
 
-    background:linear-gradient(90deg,#06b6d4,#2563eb);
+    border-color: #6366f1 !important;
 
+    box-shadow:
+        0 0 0 3px rgba(99,102,241,0.12) !important;
 }
 
-/* ==========================================================
-   DataFrame
-========================================================== */
 
-[data-testid="stDataFrame"]{
+/* =========================================================
+   INPUT LABELS
+   ========================================================= */
 
-    border-radius:18px;
+.stTextInput label,
+.stTextArea label,
+.stNumberInput label,
+.stDateInput label,
+.stTimeInput label {
 
-    overflow:hidden;
+    color: #334155 !important;
 
+    font-weight: 650 !important;
 }
 
-/* ==========================================================
-   Success / Warning / Info
-========================================================== */
 
-.stSuccess{
+/* =========================================================
+   SELECT BOX
+   ========================================================= */
 
-    border-radius:14px;
+div[data-baseweb="select"] > div {
 
+    background: white !important;
+
+    border: 2px solid #e2e8f0 !important;
+
+    border-radius: 12px !important;
+
+    color: #1e293b !important;
 }
 
-.stWarning{
 
-    border-radius:14px;
+/* =========================================================
+   PROGRESS
+   ========================================================= */
 
+.stProgress > div > div {
+
+    background: #e2e8f0 !important;
+
+    border-radius: 20px;
 }
 
-.stInfo{
 
-    border-radius:14px;
+.stProgress > div > div > div {
 
+    background:
+        linear-gradient(
+            90deg,
+            #06b6d4,
+            #6366f1,
+            #ec4899
+        ) !important;
+
+    border-radius: 20px;
 }
 
-/* ==========================================================
-   Divider
-========================================================== */
 
-hr{
+/* =========================================================
+   ALERTS
+   ========================================================= */
 
-    border:1px solid rgba(255,255,255,.08);
+div[data-testid="stAlert"] {
 
+    border-radius: 15px !important;
+
+    border: none !important;
+
+    box-shadow:
+        0 5px 18px rgba(15,23,42,0.06);
 }
 
-/* ==========================================================
-   Scrollbar
-========================================================== */
 
-::-webkit-scrollbar{
+/* =========================================================
+   TABLE
+   ========================================================= */
 
-    width:8px;
+[data-testid="stDataFrame"] {
 
+    border-radius: 16px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 8px 25px rgba(15,23,42,0.08);
 }
 
-::-webkit-scrollbar-track{
 
-    background:#0f172a;
+/* =========================================================
+   REWARD CARD
+   ========================================================= */
 
+.reward-card {
+
+    background:
+        linear-gradient(
+            135deg,
+            #fff7ed,
+            #fef3c7,
+            #fce7f3
+        );
+
+    border-radius: 24px;
+
+    padding: 28px;
+
+    text-align: center;
+
+    border: 1px solid #fed7aa;
+
+    box-shadow:
+        0 12px 35px rgba(234,88,12,0.10);
+
+    transition: 0.3s ease;
 }
 
-::-webkit-scrollbar-thumb{
 
-    background:#3b82f6;
+.reward-card:hover {
 
-    border-radius:10px;
+    transform: translateY(-6px);
 
+    box-shadow:
+        0 20px 40px rgba(234,88,12,0.15);
 }
 
-::-webkit-scrollbar-thumb:hover{
 
-    background:#2563eb;
+/* =========================================================
+   CAREER / INTERNSHIP
+   ========================================================= */
 
+.career-card {
+
+    background: white;
+
+    border-radius: 20px;
+
+    padding: 24px;
+
+    margin-bottom: 18px;
+
+    border: 1px solid #e2e8f0;
+
+    box-shadow:
+        0 8px 25px rgba(15,23,42,0.07);
+
+    transition: 0.3s ease;
 }
 
-/* ==========================================================
-   Animations
-========================================================== */
 
-.glass-card,
-.task-card,
-.schedule-card,
-[data-testid="stMetric"]{
+.career-card:hover {
 
-    animation:fadeIn .5s ease;
+    transform: translateY(-5px);
 
+    border-color: #a5b4fc;
 }
 
-@keyframes fadeIn{
 
-    from{
+/* =========================================================
+   BADGES
+   ========================================================= */
 
-        opacity:0;
+.badge {
 
-        transform:translateY(12px);
+    display: inline-block;
 
+    padding: 6px 12px;
+
+    border-radius: 20px;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    margin: 3px;
+}
+
+
+.badge-blue {
+
+    background: #dbeafe;
+
+    color: #1d4ed8 !important;
+}
+
+
+.badge-green {
+
+    background: #dcfce7;
+
+    color: #15803d !important;
+}
+
+
+.badge-purple {
+
+    background: #ede9fe;
+
+    color: #6d28d9 !important;
+}
+
+
+.badge-pink {
+
+    background: #fce7f3;
+
+    color: #be185d !important;
+}
+
+
+.badge-orange {
+
+    background: #ffedd5;
+
+    color: #c2410c !important;
+}
+
+
+/* =========================================================
+   LOGIN / REGISTER
+   ========================================================= */
+
+.login-wrapper {
+
+    max-width: 470px;
+
+    margin: 50px auto 0 auto;
+
+    padding: 38px;
+
+    background: rgba(255,255,255,0.96);
+
+    border-radius: 28px;
+
+    border: 1px solid #e2e8f0;
+
+    box-shadow:
+        0 25px 70px rgba(79,70,229,0.15);
+
+    text-align: center;
+}
+
+
+.login-title {
+
+    font-size: 38px;
+
+    font-weight: 850;
+
+    background:
+        linear-gradient(
+            135deg,
+            #2563eb,
+            #7c3aed,
+            #ec4899
+        );
+
+    -webkit-background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+
+    margin-bottom: 5px;
+}
+
+
+.login-subtitle {
+
+    color: #64748b !important;
+
+    font-size: 15px;
+
+    margin-bottom: 25px;
+}
+
+
+/* =========================================================
+   LOGIN FORM CONTAINER
+   ========================================================= */
+
+.login-form {
+
+    max-width: 400px;
+
+    margin: auto;
+}
+
+
+/* =========================================================
+   EXPANDER
+   ========================================================= */
+
+[data-testid="stExpander"] {
+
+    background: white !important;
+
+    border: 1px solid #e2e8f0 !important;
+
+    border-radius: 15px !important;
+}
+
+
+/* =========================================================
+   DIVIDER
+   ========================================================= */
+
+hr {
+
+    border: none !important;
+
+    height: 1px !important;
+
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            #c7d2fe,
+            #fbcfe8,
+            transparent
+        ) !important;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    .main .block-container {
+
+        padding-left: 1rem;
+
+        padding-right: 1rem;
     }
 
-    to{
+    .page-title {
 
-        opacity:1;
-
-        transform:translateY(0);
-
+        font-size: 34px;
     }
 
+    .glass-card {
+
+        min-height: 150px;
+    }
+
+    .card-value {
+
+        font-size: 32px;
+    }
+
+    .login-wrapper {
+
+        margin-top: 20px;
+
+        padding: 25px;
+    }
+
+    .login-title {
+
+        font-size: 30px;
+    }
 }

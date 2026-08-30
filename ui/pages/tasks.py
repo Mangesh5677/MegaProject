@@ -73,6 +73,12 @@ def render_tasks():
                         step=15
                     )
 
+                task_type = st.selectbox(
+                    "Task Type",
+                    ["Once", "Daily / Running"],
+                    help="Once = one-time task. Daily / Running = repeated task scheduled every day."
+                )
+
                 col3, col4 = st.columns(2)
 
                 with col3:
@@ -119,6 +125,7 @@ def render_tasks():
                             due_time=due_time,
                             duration=duration,
                             email=email.strip(),
+                            task_type=task_type,
                         )
 
                         st.success(
@@ -205,6 +212,10 @@ def render_tasks():
 
                         st.write(
                             f"**Priority:** {badge}"
+                        )
+
+                        st.write(
+                            f"**Task Type:** {task.task_type or 'Once'}"
                         )
 
                         st.write(

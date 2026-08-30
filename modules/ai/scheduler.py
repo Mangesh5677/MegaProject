@@ -1,33 +1,17 @@
-from datetime import datetime, timedelta, time
+from datetime import datetime, date, time, timedelta
 
-from modules.database.models import Task, FixedSchedule
+from modules.database.models import Task, FixedSchedule, Settings
 
 
 # ============================================================
-# Helper: Check whether a time slot overlaps fixed timetable
+# Priority Order
 # ============================================================
 
-def is_time_available(
-    start_time,
-    end_time,
-    fixed_schedules
-):
-    for schedule in fixed_schedules:
-
-        fixed_start = schedule.start_time
-        fixed_end = schedule.end_time
-
-        if not fixed_start or not fixed_end:
-            continue
-
-        # Overlap check
-        if (
-            start_time < fixed_end
-            and end_time > fixed_start
-        ):
-            return False
-
-    return True
+PRIORITY_ORDER = {
+    "High": 1,
+    "Medium": 2,
+    "Low": 3
+}
 
 
 # ============================================================
@@ -36,172 +20,258 @@ def is_time_available(
 
 def generate_schedule(db, user_id):
 
-    # ========================================================
-    # Get ONLY logged-in user's pending tasks
-    # ========================================================
+    # --------------------------------------------------------
+    # Get ONLY current user's pending tasks
+    # --------------------------------------------------------
 
     tasks = (
         db.query(Task)
-        .filter(Task.user_id == user_id)
-        .filter(Task.status == "Pending")
-        .order_by(Task.due_date, Task.priority)
+        .filter(
+            Task.user_id == user_id,
+            Task.status == "Pending"
+        )
         .all()
     )
 
-    # ========================================================
-    # Get ONLY logged-in user's fixed timetable
-    # ========================================================
+    # --------------------------------------------------------
+    # Get ONLY current user's timetable
+    # --------------------------------------------------------
 
-    fixed_schedules = (
+    timetable = (
         db.query(FixedSchedule)
-        .filter(FixedSchedule.user_id == user_id)
+        .filter(
+            FixedSchedule.user_id == user_id
+        )
         .all()
+    )
+
+    settings = (
+        db.query(Settings)
+        .filter(Settings.user_id == user_id)
+        .first()
+    )
+
+    work_start = settings.work_start if settings and settings.work_start else time(8, 0)
+    work_end = settings.work_end if settings and settings.work_end else time(18, 0)
+    if work_start >= work_end:
+        work_start = time(8, 0)
+        work_end = time(18, 0)
+
+    # --------------------------------------------------------
+    # Sort by Priority + Deadline
+    # --------------------------------------------------------
+
+    tasks.sort(
+        key=lambda x: (
+            PRIORITY_ORDER.get(x.priority, 3),
+            x.due_date or date.max
+        )
     )
 
     scheduled = []
     unscheduled = []
 
-    # ========================================================
-    # Priority order
-    # ========================================================
+    today = date.today()
+    now = datetime.now()
 
-    priority_order = {
-        "High": 1,
-        "Medium": 2,
-        "Low": 3
-    }
-
-    tasks.sort(
-        key=lambda task: (
-            priority_order.get(
-                task.priority,
-                3
-            ),
-            task.due_date or datetime.max.date()
-        )
-    )
-
-    # ========================================================
-    # Schedule each task
-    # ========================================================
+    # --------------------------------------------------------
+    # Clear previous schedule
+    # --------------------------------------------------------
 
     for task in tasks:
 
-        if not task.duration:
-            task.duration = 60
+        task.scheduled_date = None
+        task.scheduled_start = None
+        task.scheduled_end = None
 
-        if not task.due_date:
-            task.due_date = datetime.now().date()
+    db.commit()
 
-        task_scheduled = False
+    # --------------------------------------------------------
+    # Schedule each task
+    # --------------------------------------------------------
 
-        current_date = datetime.now().date()
+    for task in tasks:
 
-        # Don't schedule before today
-        if current_date > task.due_date:
-            current_date = task.due_date
+        duration = task.duration or 60
 
-        # ====================================================
-        # Search each day until deadline
-        # ====================================================
+        found_slot = False
 
-        while current_date <= task.due_date:
+        current_date = today
+
+        deadline = task.due_date or (today + timedelta(days=7))
+
+        # If the task is already overdue, keep scheduling it on future days
+        # instead of stopping at the passed deadline.
+        if deadline < today:
+            deadline = today + timedelta(days=30)
+
+        while current_date <= deadline:
 
             day_name = current_date.strftime("%A")
 
-            # Get fixed timetable for this user's day
-            day_schedule = [
-                schedule
-                for schedule in fixed_schedules
-                if schedule.day == day_name
-            ]
-
-            # =================================================
-            # Available working time
-            # =================================================
-
-            work_start = time(8, 0)
-            work_end = time(22, 0)
-
-            current_minutes = (
-                work_start.hour * 60
-                + work_start.minute
+            current_dt = datetime.combine(
+                current_date,
+                work_start
             )
 
-            end_minutes = (
-                work_end.hour * 60
-                + work_end.minute
+            limit_dt = datetime.combine(
+                current_date,
+                work_end
             )
 
-            # =================================================
-            # Try 30-minute intervals
-            # =================================================
+            if current_date == today:
+                candidate_now = now.replace(second=0, microsecond=0)
+                current_dt = max(current_dt, candidate_now)
 
-            while current_minutes + task.duration <= end_minutes:
+            if current_date == today and current_dt >= limit_dt:
+                current_date += timedelta(days=1)
+                continue
 
-                start_hour = current_minutes // 60
-                start_minute = current_minutes % 60
+            while current_dt + timedelta(minutes=duration) <= limit_dt:
 
-                start = time(
-                    start_hour,
-                    start_minute
-                )
+                slot_start = current_dt.time()
+                slot_end = (current_dt + timedelta(minutes=duration)).time()
 
-                end_datetime = (
-                    datetime.combine(
-                        current_date,
-                        start
+                conflict = False
+
+                for item in timetable:
+                    if item.day != day_name:
+                        continue
+                    if slot_start < item.end_time and slot_end > item.start_time:
+                        conflict = True
+                        break
+
+                if not conflict:
+                    existing_tasks = (
+                        db.query(Task)
+                        .filter(
+                            Task.user_id == user_id,
+                            Task.scheduled_date == current_date
+                        )
+                        .all()
                     )
-                    + timedelta(
-                        minutes=task.duration
-                    )
-                )
 
-                end = end_datetime.time()
+                    for existing in existing_tasks:
+                        if existing.scheduled_start is None or existing.scheduled_end is None:
+                            continue
+                        if existing.id == task.id:
+                            continue
+                        if slot_start < existing.scheduled_end and slot_end > existing.scheduled_start:
+                            conflict = True
+                            break
 
-                # Don't go beyond working hours
-                if end > work_end:
-                    break
+                if conflict:
+                    current_dt += timedelta(minutes=30)
+                    continue
 
-                # Check fixed timetable
-                available = is_time_available(
-                    start,
-                    end,
-                    day_schedule
-                )
+                task.scheduled_date = current_date
+                task.scheduled_start = slot_start
+                task.scheduled_end = slot_end
 
-                if available:
+                db.commit()
+                scheduled.append(task)
+                found_slot = True
+                break
 
-                    # =========================================
-                    # Save AI-generated schedule
-                    # =========================================
-
-                    task.scheduled_date = current_date
-                    task.scheduled_start = start
-                    task.scheduled_end = end
-
-                    db.commit()
-                    db.refresh(task)
-
-                    scheduled.append(task)
-
-                    task_scheduled = True
-
-                    break
-
-                current_minutes += 30
-
-            if task_scheduled:
+            if found_slot:
                 break
 
             current_date += timedelta(days=1)
 
-        # ====================================================
-        # Couldn't schedule task
-        # ====================================================
+            if task.task_type == "Daily / Running" and current_date > deadline:
+                break
 
-        if not task_scheduled:
+            continue
+
+            while current_dt + timedelta(minutes=duration) <= limit_dt:
+
+                slot_start = current_dt.time()
+
+                slot_end = (
+                    current_dt +
+                    timedelta(minutes=duration)
+                ).time()
+
+                conflict = False
+
+                # ------------------------------------------------
+                # Check timetable conflicts
+                # ------------------------------------------------
+
+                for item in timetable:
+
+                    if item.day != day_name:
+                        continue
+
+                    if (
+                        slot_start < item.end_time
+                        and slot_end > item.start_time
+                    ):
+                        conflict = True
+                        break
+
+                # ------------------------------------------------
+                # Check already scheduled task conflicts
+                # ------------------------------------------------
+
+                if not conflict:
+
+                    existing_tasks = (
+                        db.query(Task)
+                        .filter(
+                            Task.user_id == user_id,
+                            Task.scheduled_date == current_date
+                        )
+                        .all()
+                    )
+
+                    for existing in existing_tasks:
+
+                        if (
+                            existing.scheduled_start is None
+                            or existing.scheduled_end is None
+                        ):
+                            continue
+
+                        if existing.id == task.id:
+                            continue
+
+                        if (
+                            slot_start < existing.scheduled_end
+                            and slot_end > existing.scheduled_start
+                        ):
+                            conflict = True
+                            break
+
+                # ------------------------------------------------
+                # Free slot found
+                # ------------------------------------------------
+
+                if not conflict:
+
+                    task.scheduled_date = current_date
+                    task.scheduled_start = slot_start
+                    task.scheduled_end = slot_end
+
+                    db.commit()
+
+                    scheduled.append(task)
+
+                    found_slot = True
+
+                    break
+
+                current_dt += timedelta(minutes=30)
+
+            if found_slot:
+                break
+
+            current_date += timedelta(days=1)
+
+        if not found_slot:
 
             unscheduled.append(task)
+
+    db.commit()
 
     return scheduled, unscheduled

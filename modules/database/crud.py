@@ -85,6 +85,7 @@ def add_task(
     due_time,
     duration,
     email,
+    task_type="Once",
 ):
 
     task = Task(
@@ -96,6 +97,7 @@ def add_task(
         due_time=due_time,
         duration=duration,
         email=email,
+        task_type=task_type,
 
         reminder_24h_sent=False,
         reminder_2h_sent=False,
