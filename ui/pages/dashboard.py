@@ -106,13 +106,13 @@ def render_dashboard():
                 for cls in data["today_classes"]:
 
                     start = (
-                        cls.start_time.strftime("%H:%M")
+                        cls.start_time.strftime("%I:%M %p")
                         if cls.start_time
                         else "--:--"
                     )
 
                     end = (
-                        cls.end_time.strftime("%H:%M")
+                        cls.end_time.strftime("%I:%M %p")
                         if cls.end_time
                         else "--:--"
                     )

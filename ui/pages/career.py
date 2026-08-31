@@ -1,9 +1,152 @@
+import random
 import streamlit as st
 import time
 
 
+ROLE_LEARNING_LINKS = {
+    "Software Engineer": [
+        {
+            "title": "DSA for Placements - Full Roadmap",
+            "url": "https://www.youtube.com/results?search_query=dsa+for+placements+roadmap",
+            "description": "Learn the core coding topics required in technical interviews and coding rounds.",
+        },
+        {
+            "title": "Aptitude & Logical Reasoning Practice",
+            "url": "https://www.youtube.com/results?search_query=aptitude+questions+for+placements+youtube",
+            "description": "Improve time-based problem solving for selection tests and aptitude rounds.",
+        },
+        {
+            "title": "System Design Basics",
+            "url": "https://www.youtube.com/results?search_query=system+design+for+beginners+youtube",
+            "description": "Understand scalable backend design and interview-ready architecture thinking.",
+        },
+    ],
+    "Frontend Developer": [
+        {
+            "title": "HTML CSS JavaScript Full Course",
+            "url": "https://www.youtube.com/results?search_query=html+css+javascript+full+course+for+beginners",
+            "description": "Build a strong base in front-end fundamentals and UI logic.",
+        },
+        {
+            "title": "React JS Interview Preparation",
+            "url": "https://www.youtube.com/results?search_query=react+js+interview+questions+youtube",
+            "description": "Practice the most important React concepts and front-end patterns.",
+        },
+        {
+            "title": "Responsive Design & Accessibility",
+            "url": "https://www.youtube.com/results?search_query=responsive+design+accessibility+web+development",
+            "description": "Improve design quality, responsiveness, and user-friendly interactions.",
+        },
+    ],
+    "Backend Developer": [
+        {
+            "title": "Java / Python Backend Roadmap",
+            "url": "https://www.youtube.com/results?search_query=backend+development+roadmap+for+beginners",
+            "description": "Learn APIs, databases, authentication, and server-side architecture.",
+        },
+        {
+            "title": "REST API & Database Design",
+            "url": "https://www.youtube.com/results?search_query=rest+api+database+design+tutorial",
+            "description": "Master endpoints, data modeling, and real-world backend patterns.",
+        },
+        {
+            "title": "Interview Questions for Backend Roles",
+            "url": "https://www.youtube.com/results?search_query=backend+developer+interview+questions+youtube",
+            "description": "Prepare for practical backend and system design questions.",
+        },
+    ],
+    "Data Analyst": [
+        {
+            "title": "SQL for Data Analysis",
+            "url": "https://www.youtube.com/results?search_query=sql+for+data+analysis+tutorial",
+            "description": "Learn joins, reporting, filtering, and analytics queries.",
+        },
+        {
+            "title": "Excel + Power BI for Analytics",
+            "url": "https://www.youtube.com/results?search_query=excel+power+bi+for+data+analytics+tutorial",
+            "description": "Practice business dashboards, data cleaning, and analysis workflows.",
+        },
+        {
+            "title": "Statistics for Interviews",
+            "url": "https://www.youtube.com/results?search_query=statistics+for+data+analyst+interview",
+            "description": "Reinforce probability, distributions, and interpretation questions.",
+        },
+    ],
+    "Full Stack Developer": [
+        {
+            "title": "Full Stack Developer Roadmap",
+            "url": "https://www.youtube.com/results?search_query=full+stack+developer+roadmap+2025",
+            "description": "Understand both frontend and backend foundations with a practical roadmap.",
+        },
+        {
+            "title": "Node.js + React Projects",
+            "url": "https://www.youtube.com/results?search_query=nodejs+react+full+stack+project+tutorial",
+            "description": "Build end-to-end projects and gain confidence in full-stack workflows.",
+        },
+        {
+            "title": "Deployment & DevOps Basics",
+            "url": "https://www.youtube.com/results?search_query=deployment+devops+for+fullstack+developers",
+            "description": "Learn CI/CD, hosting, environment setup, and deployment fundamentals.",
+        },
+    ],
+}
+
+TECHNICAL_ANSWER_GUIDES = {
+    "Software Engineer": {
+        "What is the difference between a process and a thread?": "A process is an independent program with its own memory space, while a thread is a lightweight unit of execution within a process that shares the same memory. Threads are faster to create and communicate with, but they require careful synchronization to avoid race conditions.",
+        "Explain OOP concepts in your own words.": "OOP organizes code into objects that combine data and behavior. The main concepts are encapsulation, inheritance, polymorphism, and abstraction. This makes the system easier to maintain, reuse, and scale.",
+        "How do you optimize a slow SQL query?": "I would first check the query plan, identify missing indexes, reduce unnecessary joins or data, avoid SELECT *, and filter early. Then I would use indexing, proper joins, and query rewriting to reduce execution time.",
+        "What is the difference between GET and POST?": "GET retrieves data and is usually used for safe, idempotent requests, while POST sends data to create or update a resource. GET includes parameters in the URL, whereas POST sends them in the request body.",
+        "How do you debug a production bug?": "I would first reproduce the issue, gather logs and metrics, narrow the scope, and check recent deployments or config changes. Then I would isolate the root cause, fix the issue, validate the fix, and monitor the system afterward.",
+        "Explain database indexing and why it matters.": "An index is a data structure that speeds up lookups by reducing the amount of data scanned. It helps when filtering, sorting, or joining large tables, but too many indexes can slow writes and increase storage usage.",
+        "How do you design a scalable backend system?": "I would design the system with clear modules, stateless services, a database layer, caching, load balancing, and horizontal scaling. I would also consider asynchronous processing, monitoring, and reliability for future growth.",
+        "What is the difference between synchronous and asynchronous programming?": "Synchronous code executes in sequence and blocks until each task finishes, while asynchronous code allows other work to continue while waiting. Asynchronous programming helps improve responsiveness and performance in I/O-heavy systems.",
+    },
+    "Frontend Developer": {
+        "What is the virtual DOM in React?": "The virtual DOM is a lightweight copy of the real DOM used by React to optimize updates. React compares the previous and next virtual DOM states and updates only the changed parts, making UI rendering faster and more efficient.",
+        "How do you improve page performance?": "I would reduce unnecessary re-renders, compress images, lazy load content, use code splitting, and avoid heavy animations. I would also profile the app with browser tools and optimize APIs and assets where needed.",
+        "Explain CSS Flexbox and Grid.": "Flexbox is ideal for arranging elements in one dimension, such as row or column layouts. CSS Grid is better for complex two-dimensional layouts, where rows and columns need coordinated positioning.",
+        "What is event bubbling and event delegation?": "Event bubbling means an event moves up the DOM tree from the target element to parent elements. Event delegation uses a parent element to handle events from child elements efficiently, which improves performance and reduces listeners.",
+        "How do you handle API calls in React?": "I use hooks like useEffect or libraries such as Axios or fetch to call APIs, manage loading and error states, and update the UI after data arrives. I usually keep the data flow predictable and handle edge cases cleanly.",
+        "What is the difference between state and props?": "State is local and mutable data inside a component, while props are read-only inputs passed from a parent component. State drives dynamic behavior within a component, while props allow reusability.",
+        "How do you make a website responsive?": "I use flexible layouts, CSS media queries, relative units like percentages, and responsive design patterns such as grid and flexbox. The goal is to adapt the layout to different screen sizes without losing usability.",
+        "What are accessibility best practices for a web app?": "I ensure keyboard navigation, proper color contrast, semantic HTML, labels for form controls, alt text for images, and focus states. Accessibility improves usability for everyone, including users with disabilities.",
+    },
+    "Backend Developer": {
+        "Explain REST APIs and HTTP methods.": "REST is an architectural style for web services where resources are accessed through URLs and HTTP methods like GET, POST, PUT, PATCH, and DELETE. It is stateless and commonly used for building scalable APIs.",
+        "How do you ensure application scalability?": "I focus on modular design, horizontal scaling, load balancing, caching, database optimization, and monitoring. I also separate workloads such as reads, writes, and background jobs to improve performance under load.",
+        "What are JWT tokens used for?": "JWT is used for stateless authentication and authorization. It allows a server to verify a user’s identity and permissions without storing session state, which makes distributed systems easier to scale.",
+        "How do you secure an API?": "I would use HTTPS, authentication, authorization, validation, rate limiting, input sanitization, and proper error handling. I would also avoid exposing sensitive information and use secure secret management.",
+        "Explain caching and its benefits.": "Caching stores frequently accessed data in memory or a fast storage layer so repeated reads can be served quickly. This reduces load on the database, improves response time, and helps systems scale better.",
+        "What is the difference between SQL and NoSQL?": "SQL databases use structured tables with relationships and are great for transactional systems, while NoSQL databases are more flexible for unstructured or rapidly changing data. The choice depends on the data model and workload requirements.",
+        "How do you handle concurrency in a backend service?": "I would use locks, transactions, idempotent operations, and proper database isolation where required. It is also important to design for race conditions and handle retries safely in distributed systems.",
+        "What is load balancing and why is it used?": "Load balancing distributes incoming traffic across multiple servers to improve performance, reliability, and availability. It prevents one server from becoming overloaded and helps maintain uptime during high traffic.",
+    },
+    "Data Analyst": {
+        "What is the difference between inner join and left join?": "An inner join returns only rows that have matches in both tables, while a left join returns all rows from the left table and matched rows from the right table. Left joins are useful when you want to keep all records from the primary dataset.",
+        "How do you clean messy data?": "I remove duplicates, standardize formats, handle missing values, validate inconsistent entries, and correct obvious errors. A clean dataset improves the accuracy of analysis and reduces misleading results.",
+        "How do you handle missing values in a dataset?": "I investigate why values are missing, then apply the right strategy depending on the case, like dropping rows, filling with median/mean, or using a category label for missing values. The choice depends on the data and business context.",
+        "What is normalization in a database?": "Normalization is the process of organizing data to reduce redundancy and improve integrity. It divides large tables into smaller related tables and uses keys to keep the data consistent and efficient.",
+        "What is the purpose of SQL subqueries?": "Subqueries help break complex logic into smaller steps by nesting one query inside another. They are useful for filtering, aggregating, or comparing values before the final result is produced.",
+        "How do you measure data quality?": "I check completeness, accuracy, consistency, uniqueness, timeliness, and validity. Good data quality ensures the results of analysis are trustworthy and actionable.",
+        "Explain correlation vs causation.": "Correlation means two variables move together, while causation means one variable directly causes the other to change. It is important not to assume a cause just because two trends appear related.",
+        "What is the difference between a primary key and a foreign key?": "A primary key uniquely identifies each row in a table, while a foreign key references the primary key of another table. Foreign keys help maintain relationships and data integrity between tables.",
+    },
+    "Full Stack Developer": {
+        "How do you connect frontend to backend securely?": "I use HTTPS, proper authentication and authorization, secure token storage, and validated API requests. I also protect against common issues like XSS, CSRF, and injection attacks by validating inputs and enforcing safe patterns.",
+        "Explain authentication vs authorization.": "Authentication verifies who the user is, while authorization decides what that user is allowed to do. A user can be authenticated but still lack permission to access certain resources.",
+        "What is the role of a database in a full stack app?": "The database stores application data and supports retrieval, updates, and relationships between entities. It is essential for persistence, reporting, and maintaining the app’s core state reliably.",
+        "How do you handle state across frontend and backend?": "I keep the backend as the source of truth for persistent data and use frontend state for UI interactions. I also use APIs, caching, and clear data flow patterns to keep both sides synchronized and predictable.",
+        "What is CI/CD and why is it important?": "CI/CD automates integration and deployment, helping teams detect issues early and release faster. CI checks code quality and tests, while CD deploys tested code to environments automatically.",
+        "How do you deploy a web app securely?": "I would use environment variables for secrets, secure infrastructure configuration, HTTPS, a managed platform, and monitoring. I would also maintain rollback strategies and proper access controls for deployment pipelines.",
+        "How do you debug issues across frontend and backend?": "I start by reproducing the issue, checking the request flow, reviewing logs, and verifying whether data is correct at each layer. This helps isolate whether the bug is caused by the UI, API, database, or infrastructure.",
+        "Explain the difference between monolithic and microservices architecture.": "A monolith is one application with tightly coupled components, while microservices split the app into smaller independent services. Microservices improve scaling and team independence, but they add operational and communication complexity.",
+    },
+}
+
+
 def build_aptitude_questions():
-    return [
+    questions = [
         {"question": "If 20% of a number is 40, what is the number?", "options": ["100", "200", "300", "400"], "answer": "200"},
         {"question": "A train covers 120 km in 2 hours. What is its speed?", "options": ["50 km/h", "60 km/h", "70 km/h", "80 km/h"], "answer": "60 km/h"},
         {"question": "The average of 4, 6, 8, 10 is:", "options": ["6", "7", "8", "9"], "answer": "7"},
@@ -31,170 +174,175 @@ def build_aptitude_questions():
         {"question": "What is the value of 0.5 × 0.5?", "options": ["0.25", "0.5", "1", "2.5"], "answer": "0.25"},
         {"question": "Simple interest on Rs. 1000 at 5% for 2 years is:", "options": ["Rs. 50", "Rs. 75", "Rs. 100", "Rs. 150"], "answer": "Rs. 100"},
     ]
+    random.shuffle(questions)
+    return questions[:10]
+
+
+def generate_pdf_notes(role, questions, answers):
+    lines = [
+        "Career Prep Notes",
+        f"Role: {role}",
+        "",
+        "Technical Interview Questions and Notes",
+        "",
+    ]
+
+    for index, question in enumerate(questions, start=1):
+        user_answer = answers.get(index, "Not answered")
+        ideal_answer = TECHNICAL_ANSWER_GUIDES.get(role, {}).get(question, "Use a clear structure: explain the concept, give a real example, and mention trade-offs.")
+
+        lines.append(f"Q{index}: {question}")
+        lines.append(f"Your answer: {user_answer}")
+        lines.append("Better answer:")
+        lines.append(ideal_answer)
+        lines.append("Improvement tip: Answer with a short definition, one practical example, and the trade-offs or use cases.")
+        lines.append("")
+
+    lines.append("Suggested next step: revise the weak areas, watch a relevant YouTube topic video, and answer again using a structured format.")
+
+    text = []
+    y = 760
+    for line in lines:
+        safe = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        text.append(f"BT /F1 10 Tf 72 {y} Td ({safe}) Tj ET")
+        y -= 16
+
+    content_stream = "\n".join(text).encode("latin-1", "replace")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        (
+            b"<< /Length " + str(len(content_stream)).encode("ascii") + b" >>\nstream\n" + content_stream + b"\nendstream"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+
+    pdf = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(pdf))
+        pdf.extend(f"{index} 0 obj\n".encode("ascii"))
+        pdf.extend(obj)
+        pdf.extend(b"\nendobj\n")
+
+    xref_offset = len(pdf)
+    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    pdf.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        pdf.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+
+    pdf.extend(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF".encode("ascii"))
+    return bytes(pdf)
 
 
 def render_career():
     st.title("💼 Career Prep Hub")
-    st.caption("Smart preparation space for B.Tech students, freshers, and professionals targeting internships and full-time roles.")
+    st.caption("Smart learning space for placement prep, interview practice, and skill-building for freshers and students.")
 
-    st.subheader("🔎 Search Job Roles")
-
-    job_role = st.selectbox(
-        "Choose a job role you are targeting",
-        [
-            "Software Engineer",
-            "Data Analyst",
-            "Frontend Developer",
-            "Backend Developer",
-            "Full Stack Developer",
-            "Python Developer",
-            "DevOps Engineer",
-            "UI/UX Designer",
-            "Product Analyst",
-            "Cyber Security Analyst",
-            "Other",
-        ],
+    st.subheader("🎯 Choose your preparation track")
+    selected_role = st.selectbox(
+        "Target role",
+        ["Software Engineer", "Frontend Developer", "Backend Developer", "Data Analyst", "Full Stack Developer"],
     )
 
-    experience_level = st.radio(
-        "Career stage",
-        ["B.Tech Student", "Fresher", "Working Professional"],
-        horizontal=True,
-    )
-
-    job_type = st.selectbox(
-        "Job Type",
-        ["Internship", "Full Time", "Remote", "Hybrid", "Onsite"],
-    )
-
-    skills_input = st.text_area(
-        "Add skills or keywords related to this role",
-        placeholder="e.g. Python, SQL, Machine Learning, DSA, React, Java, Communication",
-        height=100,
-    )
-
-    if st.button("💡 Suggest Preparation Plan"):
-        skills = [s.strip() for s in skills_input.split(",") if s.strip()]
-        if not skills:
-            skills = ["core concepts", "projects", "communication"]
-
-        st.success(f"You selected: {job_role} | {experience_level} | {job_type}")
-
+    st.markdown("### 📺 YouTube learning links")
+    for item in ROLE_LEARNING_LINKS.get(selected_role, ROLE_LEARNING_LINKS["Software Engineer"]):
         with st.container():
-            st.markdown("### Recommended preparation roadmap")
-            st.markdown(f"- Focus on: {', '.join(skills[:5])}")
-            st.markdown("- Build 2-3 strong projects related to this role")
-            st.markdown("- Practice DSA / aptitude / communication skills")
-            st.markdown("- Prepare for resume, LinkedIn, and interview questions")
+            st.markdown(f"#### {item['title']}")
+            st.write(item["description"])
+            st.markdown(f"[▶ Open YouTube learning link]({item['url']})")
 
     st.divider()
 
-    st.subheader("🧠 Aptitude Test (25 Questions)")
-
+    st.subheader("🧠 Aptitude Test")
     if "aptitude_started" not in st.session_state:
         st.session_state.aptitude_started = False
         st.session_state.aptitude_index = 0
-        st.session_state.aptitude_score = 0
         st.session_state.aptitude_answers = {}
-        st.session_state.aptitude_time = 900
-
-    aptitude_questions = build_aptitude_questions()
+        st.session_state.aptitude_time = 600
+        st.session_state.aptitude_questions = build_aptitude_questions()
+        st.session_state.aptitude_start_time = time.time()
 
     if not st.session_state.aptitude_started:
         if st.button("🚀 Start Aptitude Exam"):
             st.session_state.aptitude_started = True
             st.session_state.aptitude_start_time = time.time()
+            st.session_state.aptitude_questions = build_aptitude_questions()
+            st.session_state.aptitude_index = 0
+            st.session_state.aptitude_answers = {}
             st.rerun()
     else:
         elapsed = int(time.time() - st.session_state.aptitude_start_time)
         remaining = max(0, st.session_state.aptitude_time - elapsed)
         minutes, seconds = divmod(remaining, 60)
-
         st.info(f"⏱️ Time Remaining: {minutes:02d}:{seconds:02d}")
 
         if remaining <= 0:
             st.warning("⏰ Time is up! Your aptitude exam has ended.")
-            st.session_state.aptitude_started = False
             final_score = 0
-            for idx, item in enumerate(aptitude_questions):
+            for idx, item in enumerate(st.session_state.aptitude_questions):
                 if st.session_state.aptitude_answers.get(idx) == item["answer"]:
                     final_score += 1
-            st.success(f"🏁 Final score: {final_score}/{len(aptitude_questions)}")
+            st.success(f"🏁 Final score: {final_score}/{len(st.session_state.aptitude_questions)}")
+            st.session_state.aptitude_started = False
             st.session_state.aptitude_index = 0
-            st.session_state.aptitude_score = 0
             st.session_state.aptitude_answers = {}
-            st.session_state.aptitude_time = 900
+            st.session_state.aptitude_questions = build_aptitude_questions()
             st.stop()
 
         q_index = st.session_state.aptitude_index
-        q = aptitude_questions[q_index]
+        q = st.session_state.aptitude_questions[q_index]
 
-        st.write(f"**Question {q_index + 1}/{len(aptitude_questions)}**")
+        st.write(f"**Question {q_index + 1}/{len(st.session_state.aptitude_questions)}**")
         st.write(q["question"])
 
-        selected = st.radio(
-            "Choose the correct answer",
-            q["options"],
-            index=None,
-            key=f"aptitude_{q_index}",
-            horizontal=True,
-        )
-
+        selected = st.radio("Choose the correct answer", q["options"], index=None, key=f"aptitude_{q_index}", horizontal=True)
         if selected is not None:
             st.session_state.aptitude_answers[q_index] = selected
 
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("Next Question"):
-                if st.session_state.aptitude_index < len(aptitude_questions) - 1:
+                if st.session_state.aptitude_index < len(st.session_state.aptitude_questions) - 1:
                     st.session_state.aptitude_index += 1
                     st.rerun()
                 else:
                     final_score = 0
-                    for idx, item in enumerate(aptitude_questions):
+                    for idx, item in enumerate(st.session_state.aptitude_questions):
                         if st.session_state.aptitude_answers.get(idx) == item["answer"]:
                             final_score += 1
-                    st.success(f"🏁 Aptitude test complete! Final score: {final_score}/{len(aptitude_questions)}")
+                    st.success(f"🏁 Aptitude test complete! Final score: {final_score}/{len(st.session_state.aptitude_questions)}")
                     st.session_state.aptitude_started = False
                     st.session_state.aptitude_index = 0
                     st.session_state.aptitude_answers = {}
-                    st.session_state.aptitude_time = 900
-                    st.session_state.aptitude_score = 0
+                    st.session_state.aptitude_questions = build_aptitude_questions()
                     st.stop()
 
         with col2:
             if st.button("Reset Exam"):
                 st.session_state.aptitude_started = False
                 st.session_state.aptitude_index = 0
-                st.session_state.aptitude_score = 0
                 st.session_state.aptitude_answers = {}
-                st.session_state.aptitude_time = 900
+                st.session_state.aptitude_questions = build_aptitude_questions()
                 st.rerun()
 
     st.divider()
 
-    st.subheader("🛠️ Technical Interview Questions")
-
-    technical_bank = {
+    st.subheader("🛠️ Technical Interview Drill")
+    tech_role = st.selectbox("Choose technical focus", ["Software Engineer", "Frontend Developer", "Backend Developer", "Data Analyst", "Full Stack Developer"])
+    bank = {
         "Software Engineer": [
             "What is the difference between a process and a thread?",
             "Explain OOP concepts in your own words.",
             "How do you optimize a slow SQL query?",
             "What is the difference between GET and POST?",
-            "Explain database indexing and why it matters.",
-            "How would you design a scalable backend system?",
-            "What is the difference between synchronous and asynchronous programming?",
             "How do you debug a production bug?",
-        ],
-        "Data Analyst": [
-            "What is the difference between inner join and left join?",
-            "How do you clean messy data?",
-            "What is normalization in a database?",
-            "What is the difference between a primary key and a foreign key?",
-            "How do you handle missing values in a dataset?",
-            "What is the purpose of SQL subqueries?",
-            "How do you measure data quality?",
-            "Explain the difference between correlation and causation.",
+            "Explain database indexing and why it matters.",
+            "How do you design a scalable backend system?",
+            "What is the difference between synchronous and asynchronous programming?",
         ],
         "Frontend Developer": [
             "What is the virtual DOM in React?",
@@ -216,6 +364,16 @@ def render_career():
             "How do you handle concurrency in a backend service?",
             "What is load balancing and why is it used?",
         ],
+        "Data Analyst": [
+            "What is the difference between inner join and left join?",
+            "How do you clean messy data?",
+            "How do you handle missing values in a dataset?",
+            "What is normalization in a database?",
+            "What is the purpose of SQL subqueries?",
+            "How do you measure data quality?",
+            "Explain correlation vs causation.",
+            "What is the difference between a primary key and a foreign key?",
+        ],
         "Full Stack Developer": [
             "How do you connect frontend to backend securely?",
             "Explain authentication vs authorization.",
@@ -228,62 +386,64 @@ def render_career():
         ],
     }
 
-    role_for_tech = st.selectbox(
-        "Select technical practice area",
-        [
-            "Software Engineer",
-            "Data Analyst",
-            "Frontend Developer",
-            "Backend Developer",
-            "Full Stack Developer",
-        ],
-    )
+    if "tech_round_started" not in st.session_state:
+        st.session_state.tech_round_started = False
+        st.session_state.tech_questions = []
+        st.session_state.tech_answers = {}
+        st.session_state.tech_index = 0
 
-    tech_questions = technical_bank.get(role_for_tech, technical_bank["Software Engineer"])
+    if not st.session_state.tech_round_started:
+        if st.button("Start Technical Questions"):
+            st.session_state.tech_round_started = True
+            st.session_state.tech_questions = random.sample(bank[tech_role], 3)
+            st.session_state.tech_answers = {}
+            st.session_state.tech_index = 0
+            st.rerun()
+    else:
+        if st.session_state.tech_index < len(st.session_state.tech_questions):
+            q = st.session_state.tech_questions[st.session_state.tech_index]
+            st.markdown(f"### Question {st.session_state.tech_index + 1}")
+            st.write(q)
+            answer = st.text_area(
+                "Your answer",
+                key=f"tech_answer_{st.session_state.tech_index}",
+                height=120,
+                label_visibility="collapsed",
+            )
 
-    for i, q in enumerate(tech_questions, 1):
-        st.markdown(f"{i}. {q}")
+            if st.button("Save and Next"):
+                st.session_state.tech_answers[st.session_state.tech_index + 1] = answer.strip()
+                if st.session_state.tech_index < len(st.session_state.tech_questions) - 1:
+                    st.session_state.tech_index += 1
+                    st.rerun()
+                else:
+                    st.session_state.tech_round_started = False
+                    st.success("Technical questions completed. Download your notes below.")
+                    st.download_button(
+                        label="Download PDF notes",
+                        data=generate_pdf_notes(tech_role, st.session_state.tech_questions, st.session_state.tech_answers),
+                        file_name=f"{tech_role.lower().replace(' ', '_')}_notes.pdf",
+                        mime="application/pdf",
+                    )
+                    st.stop()
+        else:
+            st.success("Technical questions completed. Download your notes below.")
+            st.download_button(
+                label="Download PDF notes",
+                data=generate_pdf_notes(tech_role, st.session_state.tech_questions, st.session_state.tech_answers),
+                file_name=f"{tech_role.lower().replace(' ', '_')}_notes.pdf",
+                mime="application/pdf",
+            )
 
     st.divider()
 
-    st.subheader("🎤 Mock Interview Practice")
-
-    st.write("Use this prompt to simulate a real interview:")
-    st.code(
-        "Act as a senior interviewer for a Frontend Developer role. Ask me 8 technical questions one by one. Questions should cover HTML, CSS, JavaScript, React, DOM, performance, responsive design, accessibility, API integration, and debugging. After each answer, give brief feedback and suggest improvement. At the end, provide a final score and a summary of strengths and weak points."
-    )
-
-    mock_question = st.text_area(
-        "Interview prompt",
-        value="Tell me about yourself and your projects. Explain one project in detail and why you chose it.",
-        height=120,
-    )
-
-    if st.button("Generate Interview Tips"):
-        tips = [
-            "Keep your answer structured: introduction, project details, impact, and learning.",
-            "Use the STAR method for behavioral questions.",
-            "Speak confidently and explain your technical choices clearly.",
-            "Mention metrics such as performance, user growth, or problem solved.",
-            "Show clarity on what you learned from the project.",
-            "Be ready to explain trade-offs and why you chose a particular technology.",
-        ]
-
-        st.info("### Interview guidance")
-        for tip in tips:
-            st.write(f"- {tip}")
-
-    st.divider()
-
-    st.subheader("📌 Daily Career Reminder")
+    st.subheader("📌 Daily productivity plan")
     st.markdown(
         """
-        Suggested daily routine:
-        - 20 mins aptitude practice
-        - 20 mins technical question review
-        - 30 mins project or coding practice
-        - 10 mins resume / interview reflection
+        - 20 minutes aptitude practice
+        - 20 minutes technical concept revision
+        - 30 minutes project or coding work
+        - 10 minutes resume and interview reflection
         """
     )
-
-    st.success("This section helps students and job seekers stay prepared while applying for internships and full-time roles.")
+    st.success("This section gives you direct learning links, randomized test practice, and a ready-made PDF note pack for interview preparation.")

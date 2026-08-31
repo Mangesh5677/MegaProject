@@ -223,11 +223,17 @@ def render_tasks():
                             f"{task.duration or 0} minutes"
                         )
 
+                        due_time_display = (
+                            task.due_time.strftime("%I:%M %p")
+                            if task.due_time
+                            else "No time"
+                        )
+
                         st.write(
                             f"**Deadline:** "
                             f"{task.due_date} "
                             f"at "
-                            f"{task.due_time}"
+                            f"{due_time_display}"
                         )
 
                         st.write(
@@ -236,12 +242,23 @@ def render_tasks():
 
                         if task.scheduled_date:
 
+                            scheduled_start_display = (
+                                task.scheduled_start.strftime("%I:%M %p")
+                                if task.scheduled_start
+                                else "--:--"
+                            )
+                            scheduled_end_display = (
+                                task.scheduled_end.strftime("%I:%M %p")
+                                if task.scheduled_end
+                                else "--:--"
+                            )
+
                             st.write(
                                 f"🤖 **AI Scheduled:** "
                                 f"{task.scheduled_date} "
-                                f"{task.scheduled_start} "
+                                f"{scheduled_start_display} "
                                 f"→ "
-                                f"{task.scheduled_end}"
+                                f"{scheduled_end_display}"
                             )
 
                     with col2:

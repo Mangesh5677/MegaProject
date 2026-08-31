@@ -150,8 +150,8 @@ def render_ai_scheduler():
                     "Task": task.title,
                     "Priority": task.priority,
                     "Date": str(task.scheduled_date),
-                    "Start": task.scheduled_start.strftime("%H:%M"),
-                    "End": task.scheduled_end.strftime("%H:%M"),
+                    "Start": task.scheduled_start.strftime("%I:%M %p"),
+                    "End": task.scheduled_end.strftime("%I:%M %p"),
                     "Duration": f"{task.duration} min",
                     "Deadline": (
                         str(task.due_date)
@@ -231,11 +231,11 @@ def render_ai_scheduler():
             )
 
             scheduled_start = (
-                task.scheduled_start.strftime("%H:%M")
+                task.scheduled_start.strftime("%I:%M %p")
             )
 
             scheduled_end = (
-                task.scheduled_end.strftime("%H:%M")
+                task.scheduled_end.strftime("%I:%M %p")
             )
 
             due_date = (

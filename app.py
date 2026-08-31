@@ -9,7 +9,7 @@ from ui.pages.settings import render_settings
 
 st.set_page_config(
     page_title="AI Productivity Manager",
-    page_icon="🧠",
+    page_icon="🚀",
     layout="wide",
 )
 
@@ -57,12 +57,20 @@ from ui.pages.register import render_register
 
 if not is_logged_in():
 
-    st.title("🧠 AI Productivity Manager")
+    st.markdown(
+        """
+        <div class="auth-brand">
+            <div class="brand-mark">⚡</div>
+            <div class="brand-text">AI Productivity Manager</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     tab1, tab2 = st.tabs(
         [
-            "🔐 Login",
-            "📝 Register"
+            "Login",
+            "Register"
         ]
     )
 

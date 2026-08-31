@@ -151,7 +151,7 @@ def render_calendar():
             if task.due_time:
 
                 due_time = task.due_time.strftime(
-                    "%H:%M"
+                    "%I:%M %p"
                 )
 
             else:

@@ -196,13 +196,13 @@ def render_fixed_schedule():
                 with col1:
 
                     start_text = (
-                        item.start_time.strftime("%H:%M")
+                        item.start_time.strftime("%I:%M %p")
                         if item.start_time
                         else "--:--"
                     )
 
                     end_text = (
-                        item.end_time.strftime("%H:%M")
+                        item.end_time.strftime("%I:%M %p")
                         if item.end_time
                         else "--:--"
                     )
