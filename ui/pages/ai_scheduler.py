@@ -7,7 +7,7 @@ from modules.ai.scheduler import generate_schedule
 
 def render_ai_scheduler():
 
-    st.title("🤖 AI Smart Scheduler")
+    st.title("AI Smart Scheduler")
 
     st.markdown(
         """
@@ -108,7 +108,7 @@ def render_ai_scheduler():
         # PAGE HEADER
         # ==========================================================
 
-        st.subheader("📅 Your AI Schedule")
+        st.subheader("Your AI Schedule")
 
         if not scheduled_tasks:
 

@@ -11,7 +11,7 @@ def render_calendar():
     # PAGE TITLE
     # =====================================================
 
-    st.title("📅 Calendar")
+    st.title("Calendar")
 
     st.caption(
         "View your tasks according to their scheduled date."

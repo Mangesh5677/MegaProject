@@ -1,6 +1,25 @@
 import random
 import streamlit as st
 import time
+from datetime import date
+
+from modules.database.database import SessionLocal
+from modules.career.application_service import (
+    apply_for_internship,
+    get_applications,
+    update_application,
+)
+from modules.career.internship_service import (
+    create_internship,
+    get_internships,
+    update_internship_status,
+)
+from modules.career.preparation_service import (
+    create_preparation_task,
+    get_preparation_tasks,
+    get_task_resources,
+    set_preparation_completed,
+)
 
 
 ROLE_LEARNING_LINKS = {
@@ -238,17 +257,194 @@ def generate_pdf_notes(role, questions, answers):
     return bytes(pdf)
 
 
+def render_internship_pipeline():
+    user = st.session_state.user
+    db = SessionLocal()
+
+    try:
+        st.subheader("Internship Pipeline")
+        st.caption("Save opportunities, apply, track outcomes, and prepare for each role.")
+
+        with st.expander("Add internship opportunity"):
+            with st.form("add_internship_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    company_name = st.text_input("Company")
+                    role = st.text_input("Role")
+                    location = st.text_input("Location", placeholder="Bengaluru or Remote")
+                with col2:
+                    work_mode = st.selectbox("Work mode", ["Remote", "Hybrid", "On-site"])
+                    application_deadline = st.date_input("Application deadline", value=date.today())
+                    application_url = st.text_input("Application URL")
+                skills = st.text_input("Required skills", placeholder="Python, SQL, communication")
+                description = st.text_area("Description")
+                submitted = st.form_submit_button("Save internship", use_container_width=True)
+                if submitted:
+                    if not company_name.strip() or not role.strip():
+                        st.error("Company and role are required.")
+                    else:
+                        create_internship(
+                            db, user.id, company_name, role, description, location,
+                            work_mode, skills, application_deadline, application_url,
+                        )
+                        st.success("Internship saved.")
+                        st.rerun()
+
+        search = st.text_input("Search by company, role, or skill", key="internship_search")
+        status_filter = st.selectbox(
+            "Filter status",
+            ["All", "Saved", "Preparing", "Applied", "Interview", "Selected", "Rejected"],
+            key="internship_status_filter",
+        )
+        internships = get_internships(db, user.id, search, status_filter)
+
+        st.markdown(f"**Opportunities ({len(internships)})**")
+        if not internships:
+            st.info("No internships match your search. Add an opportunity above to begin.")
+        else:
+            internship_options = {
+                f"{item.company_name} - {item.role} ({item.status})": item.id
+                for item in internships
+            }
+            selected_label = st.selectbox("View internship", list(internship_options), key="selected_internship")
+            selected_id = internship_options[selected_label]
+            internship = next(item for item in internships if item.id == selected_id)
+
+            st.markdown(f"### {internship.role} at {internship.company_name}")
+            st.write(internship.description or "No description added.")
+            st.write(f"**Location:** {internship.location or 'Not specified'}  |  **Mode:** {internship.work_mode or 'Not specified'}")
+            st.write(f"**Skills:** {internship.skills or 'Not specified'}  |  **Deadline:** {internship.application_deadline or 'Not specified'}")
+            if internship.application_url:
+                st.link_button("Open application", internship.application_url)
+
+            applications = get_applications(db, user.id)
+            current_application = next((item for item in applications if item.internship_id == internship.id), None)
+            if current_application is None:
+                with st.form(f"apply_form_{internship.id}"):
+                    notes = st.text_area("Application notes", placeholder="Resume version, referral, or submission details")
+                    apply_submitted = st.form_submit_button("Apply and track application", use_container_width=True)
+                    if apply_submitted:
+                        apply_for_internship(db, user.id, internship.id, notes)
+                        update_internship_status(db, user.id, internship.id, "Applied")
+                        st.success("Application added to your tracker.")
+                        st.rerun()
+            else:
+                st.info(f"Application status: {current_application.status} | Applied: {current_application.applied_date}")
+                new_internship_status = st.selectbox(
+                    "Update pipeline status",
+                    ["Applied", "Preparing", "Interview", "Selected", "Rejected"],
+                    index=["Applied", "Preparing", "Interview", "Selected", "Rejected"].index(internship.status) if internship.status in ["Applied", "Preparing", "Interview", "Selected", "Rejected"] else 0,
+                    key=f"pipeline_status_{internship.id}",
+                )
+                if st.button("Save pipeline status", key=f"save_pipeline_{internship.id}"):
+                    update_internship_status(db, user.id, internship.id, new_internship_status)
+                    update_application(db, user.id, current_application.id, new_internship_status, current_application.interview_date, current_application.notes or "")
+                    st.success("Application status updated.")
+                    st.rerun()
+
+        st.divider()
+        st.subheader("Track applications")
+        applications = get_applications(db, user.id)
+        if not applications:
+            st.info("Applications you submit will appear here.")
+        for application in applications:
+            internship = next((item for item in get_internships(db, user.id) if item.id == application.internship_id), None)
+            if internship is None:
+                continue
+            with st.expander(f"{internship.company_name} - {internship.role} | {application.status}"):
+                st.write(f"Applied on {application.applied_date}")
+                with st.form(f"application_update_{application.id}"):
+                    status = st.selectbox("Status", ["Applied", "Shortlisted", "Interview", "Selected", "Rejected"], index=["Applied", "Shortlisted", "Interview", "Selected", "Rejected"].index(application.status) if application.status in ["Applied", "Shortlisted", "Interview", "Selected", "Rejected"] else 0)
+                    interview_date = st.date_input("Interview date", value=application.interview_date or date.today())
+                    notes = st.text_area("Notes", value=application.notes or "")
+                    saved = st.form_submit_button("Update application")
+                    if saved:
+                        update_application(db, user.id, application.id, status, interview_date, notes)
+                        update_internship_status(db, user.id, internship.id, status if status != "Shortlisted" else "Interview")
+                        st.success("Application tracker updated.")
+                        st.rerun()
+
+        st.divider()
+        st.subheader("Track preparation")
+        all_internships = get_internships(db, user.id)
+        if all_internships:
+            prep_options = {f"{item.company_name} - {item.role}": item.id for item in all_internships}
+            prep_label = st.selectbox("Preparation target", list(prep_options), key="prep_target")
+            prep_internship_id = prep_options[prep_label]
+            with st.form("add_preparation_form"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    title = st.text_input("Preparation task", placeholder="Practice REST API questions")
+                    category = st.selectbox("Category", ["Technical", "DSA", "SQL", "Aptitude", "HR", "Interview"])
+                    priority = st.selectbox("Priority", ["Low", "Medium", "High"])
+                with col2:
+                    duration = st.number_input("Duration (minutes)", min_value=5, max_value=600, value=30, step=5)
+                    preparation_date = st.date_input("Preparation date", value=date.today())
+                description = st.text_area("Task details")
+                prep_submitted = st.form_submit_button("Add preparation task", use_container_width=True)
+                if prep_submitted:
+                    if not title.strip():
+                        st.error("A preparation task title is required.")
+                    else:
+                        create_preparation_task(db, user.id, prep_internship_id, title, description, category, priority, duration, preparation_date)
+                        task_text = f"{title} {category}".lower()
+                        if "dsa" in task_text and "array" in task_text:
+                            create_preparation_task(
+                                db,
+                                user.id,
+                                prep_internship_id,
+                                "Watch YouTube lesson for array DSA",
+                                "Review array patterns and solutions before attempting the problem list.",
+                                "Video",
+                                "Low",
+                                45,
+                                preparation_date,
+                            )
+                        st.success("Preparation task added.")
+                        st.rerun()
+
+            preparation_tasks = get_preparation_tasks(db, user.id, prep_internship_id)
+            completed_count = sum(task.completed for task in preparation_tasks)
+            st.progress(completed_count / len(preparation_tasks) if preparation_tasks else 0, text=f"Preparation progress: {completed_count}/{len(preparation_tasks)} complete")
+            for task in preparation_tasks:
+                checked = st.checkbox(
+                    f"{task.title} | {task.category or 'General'} | {task.preparation_date or 'Unscheduled'}",
+                    value=task.completed,
+                    key=f"prep_task_{task.id}",
+                )
+                if checked != task.completed:
+                    set_preparation_completed(db, user.id, task.id, checked)
+                    st.rerun()
+                if task.description:
+                    st.caption(task.description)
+                resources = get_task_resources(task)
+                if resources:
+                    st.markdown("**Study resources**")
+                    st.markdown(f"[Open YouTube lesson]({resources['youtube']})")
+                    for index, (problem, url) in enumerate(resources["problems"], start=1):
+                        st.markdown(f"{index}. [{problem}]({url})")
+        else:
+            st.info("Save an internship before creating preparation tasks.")
+    finally:
+        db.close()
+
+
 def render_career():
-    st.title("💼 Career Prep Hub")
+    st.title("Career Prep Hub")
     st.caption("Smart learning space for placement prep, interview practice, and skill-building for freshers and students.")
 
-    st.subheader("🎯 Choose your preparation track")
+    render_internship_pipeline()
+
+    st.divider()
+    st.subheader("Interview preparation")
+
+    st.subheader("Choose your preparation track")
     selected_role = st.selectbox(
         "Target role",
         ["Software Engineer", "Frontend Developer", "Backend Developer", "Data Analyst", "Full Stack Developer"],
     )
 
-    st.markdown("### 📺 YouTube learning links")
+    st.markdown("### YouTube learning links")
     for item in ROLE_LEARNING_LINKS.get(selected_role, ROLE_LEARNING_LINKS["Software Engineer"]):
         with st.container():
             st.markdown(f"#### {item['title']}")
@@ -257,7 +453,7 @@ def render_career():
 
     st.divider()
 
-    st.subheader("🧠 Aptitude Test")
+    st.subheader("Aptitude Test")
     if "aptitude_started" not in st.session_state:
         st.session_state.aptitude_started = False
         st.session_state.aptitude_index = 0
@@ -267,7 +463,7 @@ def render_career():
         st.session_state.aptitude_start_time = time.time()
 
     if not st.session_state.aptitude_started:
-        if st.button("🚀 Start Aptitude Exam"):
+        if st.button("Start Aptitude Exam"):
             st.session_state.aptitude_started = True
             st.session_state.aptitude_start_time = time.time()
             st.session_state.aptitude_questions = build_aptitude_questions()
@@ -281,7 +477,7 @@ def render_career():
         st.info(f"⏱️ Time Remaining: {minutes:02d}:{seconds:02d}")
 
         if remaining <= 0:
-            st.warning("⏰ Time is up! Your aptitude exam has ended.")
+            st.warning("Time is up! Your aptitude exam has ended.")
             final_score = 0
             for idx, item in enumerate(st.session_state.aptitude_questions):
                 if st.session_state.aptitude_answers.get(idx) == item["answer"]:
@@ -314,7 +510,7 @@ def render_career():
                     for idx, item in enumerate(st.session_state.aptitude_questions):
                         if st.session_state.aptitude_answers.get(idx) == item["answer"]:
                             final_score += 1
-                    st.success(f"🏁 Aptitude test complete! Final score: {final_score}/{len(st.session_state.aptitude_questions)}")
+                    st.success(f"Aptitude test complete! Final score: {final_score}/{len(st.session_state.aptitude_questions)}")
                     st.session_state.aptitude_started = False
                     st.session_state.aptitude_index = 0
                     st.session_state.aptitude_answers = {}
@@ -331,7 +527,7 @@ def render_career():
 
     st.divider()
 
-    st.subheader("🛠️ Technical Interview Drill")
+    st.subheader("Technical Interview Drill")
     tech_role = st.selectbox("Choose technical focus", ["Software Engineer", "Frontend Developer", "Backend Developer", "Data Analyst", "Full Stack Developer"])
     bank = {
         "Software Engineer": [

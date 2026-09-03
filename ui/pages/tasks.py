@@ -13,7 +13,7 @@ from modules.database.crud import (
 
 def render_tasks():
 
-    st.title("📋 My Tasks")
+    st.title("My Tasks")
 
     st.caption(
         "Manage your personal tasks and deadlines."

@@ -12,7 +12,7 @@ from modules.database.crud import (
 
 def render_fixed_schedule():
 
-    st.title("📅 Fixed Weekly Timetable")
+    st.title("Fixed Weekly Timetable")
 
     st.caption(
         "Your personal weekly timetable. "

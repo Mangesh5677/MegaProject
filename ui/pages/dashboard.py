@@ -39,8 +39,7 @@ def render_dashboard():
         # Header
         # =====================================================
 
-        st.title("🧠 AI Productivity Manager")
-
+        st.title("AI Productivity Manager")
         st.caption(
             f"Welcome back, {user.name} 👋"
         )

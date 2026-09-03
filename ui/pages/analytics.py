@@ -8,7 +8,7 @@ from modules.database.crud import get_tasks
 
 def render_analytics():
 
-    st.title("📊 Analytics")
+    st.title("Analytics")
 
     user = st.session_state.user
 
