@@ -31,9 +31,9 @@ class User(Base):
 
     password = Column(String, nullable=False)
 
+    role = Column(String, default="user", nullable=False)
+
     created_at = Column(DateTime, default=datetime.utcnow)
-
-
 # ============================================================
 # Settings Model
 # ============================================================
@@ -123,6 +123,13 @@ class Task(Base):
         Integer,
         ForeignKey("users.id"),
         nullable=False,
+        index=True
+    )
+
+    assigned_by_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=True,
         index=True
     )
 

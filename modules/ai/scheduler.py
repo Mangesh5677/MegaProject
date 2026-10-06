@@ -74,7 +74,7 @@ def generate_schedule(db, user_id):
         current_date = today
         deadline = task.due_date or (today + timedelta(days=7))
 
-        if deadline < today:
+        if deadline <= today:
             deadline = today + timedelta(days=30)
 
         while current_date <= deadline:

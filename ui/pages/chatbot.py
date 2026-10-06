@@ -1,6 +1,16 @@
+from chromadb import db
 import streamlit as st
 
 from modules.database.database import SessionLocal
+from modules.analytics.activity_service import log_activity
+
+from modules.database.crud import (
+    get_tasks,
+    get_fixed_schedules,
+)
+
+from modules.ai.chatbot import get_chatbot_response
+
 
 from modules.database.crud import (
     get_tasks,
@@ -104,10 +114,16 @@ def display_youtube_resources(resources):
 
                 if url:
 
-                    st.link_button(
-                        "▶️ Watch on YouTube",
-                        url,
-                        use_container_width=True
+                    st.markdown(
+                        f"""
+                        <a href="{url}" target="_blank" rel="noopener noreferrer"
+                           style="display:inline-block; padding:0.6rem 1rem; background:#5b2cff; color:#ffffff;
+                                  border-radius:10px; text-decoration:none; font-weight:600; width:100%;
+                                  text-align:center; box-sizing:border-box;">
+                            ▶️ Watch on YouTube
+                        </a>
+                        """,
+                        unsafe_allow_html=True,
                     )
 
             st.divider()
@@ -119,10 +135,16 @@ def display_youtube_resources(resources):
             "You can search YouTube for this task."
         )
 
-        st.link_button(
-            "🔎 Search YouTube",
-            youtube_search,
-            use_container_width=True
+        st.markdown(
+            f"""
+            <a href="{youtube_search}" target="_blank" rel="noopener noreferrer"
+               style="display:inline-block; padding:0.6rem 1rem; background:#5b2cff; color:#ffffff;
+                      border-radius:10px; text-decoration:none; font-weight:600; width:100%;
+                      text-align:center; box-sizing:border-box;">
+                🔎 Search YouTube
+            </a>
+            """,
+            unsafe_allow_html=True,
         )
 
 
@@ -153,18 +175,30 @@ def display_leetcode_resources(resources):
 
     with col1:
 
-        st.link_button(
-            "🚀 Open LeetCode",
-            leetcode["problemset"],
-            use_container_width=True
+        st.markdown(
+            f"""
+            <a href="{leetcode['problemset']}" target="_blank" rel="noopener noreferrer"
+               style="display:inline-block; padding:0.6rem 1rem; background:#5b2cff; color:#ffffff;
+                      border-radius:10px; text-decoration:none; font-weight:600; width:100%;
+                      text-align:center; box-sizing:border-box;">
+                🚀 Open LeetCode
+            </a>
+            """,
+            unsafe_allow_html=True,
         )
 
     with col2:
 
-        st.link_button(
-            "🔎 Search Problems",
-            leetcode["search"],
-            use_container_width=True
+        st.markdown(
+            f"""
+            <a href="{leetcode['search']}" target="_blank" rel="noopener noreferrer"
+               style="display:inline-block; padding:0.6rem 1rem; background:#5b2cff; color:#ffffff;
+                      border-radius:10px; text-decoration:none; font-weight:600; width:100%;
+                      text-align:center; box-sizing:border-box;">
+                🔎 Search Problems
+            </a>
+            """,
+            unsafe_allow_html=True,
         )
 
 
@@ -571,19 +605,17 @@ or
                         user_message=user_prompt,
                         tasks=tasks,
                         fixed_schedules=fixed_schedules,
-                        chat_history=(
-                            st.session_state
-                            .chat_messages[:-1]
-                        )
+                        chat_history=st.session_state.chat_messages[:-1],
                     )
 
-                st.markdown(
-                    response
+                log_activity(
+                    db,
+                    user_id,
+                    "AI_CHAT",
+                    "User interacted with AI chatbot"
                 )
 
-            # ------------------------------------------------
-            # Save AI Response
-            # ------------------------------------------------
+                st.markdown(response)
 
             st.session_state.chat_messages.append(
                 {
@@ -592,15 +624,8 @@ or
                 }
             )
 
-            # ------------------------------------------------
-            # Resource Recommendation
-            # ------------------------------------------------
-
             st.divider()
-
-            st.subheader(
-                "🎯 Recommended Resources"
-            )
+            st.subheader("🎯 Recommended Resources")
 
             pending_tasks = [
                 task
@@ -609,157 +634,66 @@ or
             ]
 
             if not pending_tasks:
-
                 st.success(
                     "🎉 You have completed all your tasks!"
                 )
 
             else:
-
-                # --------------------------------------------
-                # Show resources for matching tasks
-                # --------------------------------------------
-
                 for task in pending_tasks:
+                    task_title = task.title or "Untitled Task"
+                    task_description = task.description or ""
+                    user_text = user_prompt.lower()
+                    task_title_text = task_title.lower()
 
-                    task_title = (
-                        task.title
-                        or "Untitled Task"
+                    relevant = (
+                        task_title_text in user_text
+                        or any(
+                            word in user_text
+                            for word in task_title_text.split()
+                            if len(word) > 3
+                        )
+                        or any(
+                            keyword in user_text
+                            for keyword in (
+                                "today",
+                                "tasks",
+                                "prioritize",
+                                "priority",
+                                "schedule",
+                                "productivity",
+                                "progress",
+                            )
+                        )
                     )
-
-                    task_description = (
-                        task.description
-                        or ""
-                    )
-
-                    # Combine text
-                    task_text = (
-                        f"{task_title} "
-                        f"{task_description}"
-                    ).lower()
-
-                    # ----------------------------------------
-                    # Determine whether this task is relevant
-                    # ----------------------------------------
-
-                    user_text = (
-                        user_prompt
-                        .lower()
-                    )
-
-                    relevant = False
-
-                    # Match task title
-                    if task_title.lower() in user_text:
-
-                        relevant = True
-
-                    # Match words from task
-                    task_words = [
-                        word
-                        for word in task_title.lower().split()
-                        if len(word) > 3
-                    ]
-
-                    if any(
-                        word in user_text
-                        for word in task_words
-                    ):
-
-                        relevant = True
-
-                    # General questions
-                    general_questions = [
-                        "today",
-                        "tasks",
-                        "prioritize",
-                        "priority",
-                        "schedule",
-                        "productivity",
-                        "progress",
-                    ]
-
-                    if any(
-                        keyword in user_text
-                        for keyword in general_questions
-                    ):
-
-                        relevant = True
-
-                    # ----------------------------------------
-                    # Show Resource Card
-                    # ----------------------------------------
 
                     if relevant:
-
-                        with st.container(
-                            border=True
-                        ):
-
-                            st.markdown(
-                                f"## 📝 {task_title}"
-                            )
+                        with st.container(border=True):
+                            st.markdown(f"## 📝 {task_title}")
 
                             if task_description:
+                                st.caption(task_description)
 
-                                st.caption(
-                                    task_description
-                                )
-
-                            # --------------------------------
-                            # Task Metadata
-                            # --------------------------------
-
-                            meta1, meta2, meta3 = st.columns(
-                                3
-                            )
+                            meta1, meta2, meta3 = st.columns(3)
 
                             with meta1:
-
-                                st.write(
-                                    f"🔥 {task.priority}"
-                                )
+                                st.write(f"🔥 {task.priority or 'Unspecified'}")
 
                             with meta2:
-
                                 if task.due_date:
-
-                                    st.write(
-                                        f"📅 {task.due_date}"
-                                    )
+                                    st.write(f"📅 {task.due_date}")
 
                             with meta3:
-
                                 if task.duration:
-
-                                    st.write(
-                                        f"⏱️ {task.duration} min"
-                                    )
-
-                            # --------------------------------
-                            # Generate Resources
-                            # --------------------------------
+                                    st.write(f"⏱️ {task.duration} min")
 
                             try:
-
-                                with st.spinner(
-                                    "🔎 Finding useful resources..."
-                                ):
-
-                                    display_task_resources(
-                                        task
-                                    )
-
+                                with st.spinner("🔎 Finding useful resources..."):
+                                    display_task_resources(task)
                             except Exception as resource_error:
-
                                 st.warning(
-                                    "Unable to load resources "
-                                    "for this task."
+                                    "Unable to load resources for this task."
                                 )
-
-                                st.caption(
-                                    str(resource_error)
-                                )
+                                st.caption(str(resource_error))
 
         # ====================================================
         # Resource Explorer

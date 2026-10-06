@@ -4,6 +4,12 @@ import streamlit as st
 
 from modules.database.database import SessionLocal
 from modules.database.models import User, Task
+from modules.auth.profile import (
+    normalize_profile_photo,
+    profile_photo_data_uri,
+    remove_profile_photo,
+    save_profile_photo,
+)
 from modules.settings.settings_service import (
     get_settings,
     save_settings,
@@ -13,6 +19,9 @@ def render_settings():
 
     st.title("⚙ Settings")
     st.caption("Manage your account and application preferences.")
+
+    if st.session_state.pop("profile_saved", False):
+        st.success("Profile updated successfully.")
 
     db = SessionLocal()
 
@@ -27,18 +36,76 @@ def render_settings():
     # ==========================================
 
     with st.expander("👤 Account Settings", expanded=True):
-
-        st.text_input(
-            "Name",
-            value=user.name,
-            disabled=True
+        st.markdown(
+            f'<div class="profile-photo-preview"><img src="{profile_photo_data_uri(user.id)}" alt="Current profile photo"></div>',
+            unsafe_allow_html=True,
         )
 
-        st.text_input(
-            "Email",
-            value=user.email,
-            disabled=True
-        )
+        with st.form(f"profile_settings_{user.id}"):
+            profile_name = st.text_input(
+                "Name",
+                value=user.name,
+                key=f"profile_name_{user.id}",
+            )
+
+            st.text_input(
+                "Email",
+                value=user.email,
+                disabled=True
+            )
+
+            profile_photo = st.file_uploader(
+                "Profile photo",
+                type=["png", "jpg", "jpeg", "webp"],
+                max_upload_size=5,
+                key=f"profile_photo_{user.id}",
+                help="Upload a PNG, JPG, or WebP image up to 5 MB.",
+            )
+            use_demo_photo = st.checkbox(
+                "Use the demo profile photo",
+                key=f"use_demo_photo_{user.id}",
+            )
+            save_profile = st.form_submit_button("Save Profile")
+
+        if save_profile:
+            clean_name = profile_name.strip()
+            if not clean_name:
+                st.error("Name cannot be empty.")
+            elif profile_photo and profile_photo.size > 5 * 1024 * 1024:
+                st.error("Profile photos must be 5 MB or smaller.")
+            else:
+                try:
+                    normalized_photo = (
+                        normalize_profile_photo(profile_photo.getvalue())
+                        if profile_photo and not use_demo_photo
+                        else None
+                    )
+                except ValueError as error:
+                    st.error(str(error))
+                else:
+                    database_user = (
+                        db.query(User)
+                        .filter(User.id == user.id)
+                        .first()
+                    )
+                    if database_user is None:
+                        st.error("Your account could not be found.")
+                    else:
+                        database_user.name = clean_name
+                        try:
+                            if use_demo_photo:
+                                remove_profile_photo(user.id)
+                            elif normalized_photo is not None:
+                                save_profile_photo(user.id, normalized_photo)
+                        except OSError as error:
+                            db.rollback()
+                            st.error(f"Could not save the profile photo: {error}")
+                        else:
+                            db.commit()
+                            user.name = clean_name
+                            st.session_state.profile_saved = True
+                            db.close()
+                            st.rerun()
 # ==========================================
 # Notifications
 # ==========================================

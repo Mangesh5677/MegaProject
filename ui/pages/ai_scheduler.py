@@ -1,8 +1,12 @@
+from datetime import date, time
+
 import streamlit as st
 
 from modules.database.database import SessionLocal
 from modules.database.crud import get_tasks
+from modules.database.models import FixedSchedule, Task
 from modules.ai.scheduler import generate_schedule
+from modules.analytics.activity_service import log_activity
 
 
 def render_ai_scheduler():
@@ -35,12 +39,18 @@ def render_ai_scheduler():
 
             if st.button(
                 "🚀 Generate AI Schedule",
-                use_container_width=True
+                width="stretch"
             ):
 
                 scheduled, unscheduled = generate_schedule(
                     db,
                     user.id
+                )
+                log_activity(
+                    db,
+                    user.id,
+                    "AI_SCHEDULER",
+                    "User generated an AI schedule"
                 )
 
                 st.success(
@@ -58,13 +68,11 @@ def render_ai_scheduler():
                         for task in unscheduled:
                             st.write(f"• {task.title}")
 
-                st.rerun()
-
         with col2:
 
             if st.button(
                 "🔄 Refresh",
-                use_container_width=True
+                width="stretch"
             ):
                 st.rerun()
 
@@ -78,16 +86,19 @@ def render_ai_scheduler():
             db,
             user.id
         )
+        today = date.today()
 
         # ==========================================================
-        # GET SCHEDULED TASKS
+        # GET TODAY'S AI-SCHEDULED TASKS
         # ==========================================================
 
         scheduled_tasks = [
             task
             for task in tasks
             if (
-                task.scheduled_date is not None
+                task.status != "Completed"
+                and
+                task.scheduled_date == today
                 and task.scheduled_start is not None
                 and task.scheduled_end is not None
             )
@@ -108,73 +119,73 @@ def render_ai_scheduler():
         # PAGE HEADER
         # ==========================================================
 
-        st.subheader("Your AI Schedule")
+        st.subheader("AI-Generated Tasks for Today")
 
         if not scheduled_tasks:
 
             st.info(
-                "No tasks are currently scheduled."
+                "No AI-generated tasks are scheduled for today."
             )
 
             st.write(
-                "Click **🚀 Generate AI Schedule** to create your schedule."
+                "Click **🚀 Generate AI Schedule** to create today's schedule."
             )
 
-            return
+        else:
 
-        # ==========================================================
-        # SUMMARY
-        # ==========================================================
+            # ==========================================================
+            # SUMMARY
+            # ==========================================================
 
-        st.success(
-            f"📌 {len(scheduled_tasks)} task(s) currently scheduled."
-        )
-
-        # ==========================================================
-        # TABLE VIEW
-        # ==========================================================
-
-        st.markdown("### 📊 Schedule Overview")
-
-        table_data = []
-
-        for task in scheduled_tasks:
-
-            if task.status == "Completed":
-                status = "✅ Completed"
-            else:
-                status = "⏳ Pending"
-
-            table_data.append(
-                {
-                    "Task": task.title,
-                    "Priority": task.priority,
-                    "Date": str(task.scheduled_date),
-                    "Start": task.scheduled_start.strftime("%I:%M %p"),
-                    "End": task.scheduled_end.strftime("%I:%M %p"),
-                    "Duration": f"{task.duration} min",
-                    "Deadline": (
-                        str(task.due_date)
-                        if task.due_date
-                        else "No Deadline"
-                    ),
-                    "Status": status,
-                }
+            st.success(
+                f"📌 {len(scheduled_tasks)} task(s) currently scheduled."
             )
 
-        st.dataframe(
-            table_data,
-            use_container_width=True,
-            hide_index=True
-        )
+            # ==========================================================
+            # TABLE VIEW
+            # ==========================================================
 
-        st.divider()
+            st.markdown("### 📊 Schedule Overview")
 
-        # ==========================================================
-        # CARD VIEW
-        # ==========================================================
+            table_data = []
 
-        st.markdown("### 🗓️ Scheduled Tasks")
+            for task in scheduled_tasks:
+
+                if task.status == "Completed":
+                    status = "✅ Completed"
+                else:
+                    status = "⏳ Pending"
+
+                table_data.append(
+                    {
+                        "Task": task.title,
+                        "Priority": task.priority,
+                        "Date": str(task.scheduled_date),
+                        "Start": task.scheduled_start.strftime("%I:%M %p"),
+                        "End": task.scheduled_end.strftime("%I:%M %p"),
+                        "Duration": f"{task.duration} min",
+                        "Deadline": (
+                            str(task.due_date)
+                            if task.due_date
+                            else "No Deadline"
+                        ),
+                        "Status": status,
+                    }
+                )
+
+            st.dataframe(
+                table_data,
+                width="stretch",
+                hide_index=True
+            )
+
+            st.divider()
+
+            # ==========================================================
+            # CARD VIEW
+            # ==========================================================
+
+            st.markdown("### 🗓️ Scheduled Tasks")
 
         for task in scheduled_tasks:
 
@@ -335,6 +346,88 @@ def render_ai_scheduler():
                         {due_date}
                         """
                     )
+
+        # ==========================================================
+        # TODAY'S FULL TIMETABLE
+        # ==========================================================
+
+        st.divider()
+        st.subheader("📅 Today's Timetable")
+
+        today_day = today.strftime("%A")
+
+        fixed_events = (
+            db.query(FixedSchedule)
+            .filter(
+                FixedSchedule.user_id == user.id,
+                FixedSchedule.day == today_day,
+            )
+            .all()
+        )
+
+        today_tasks = (
+            db.query(Task)
+            .filter(
+                Task.user_id == user.id,
+                Task.scheduled_date == today,
+                Task.scheduled_start.isnot(None),
+                Task.scheduled_end.isnot(None),
+            )
+            .all()
+        )
+
+        timetable_entries = [
+            (
+                event.start_time,
+                event.end_time,
+                event.title,
+                event.category or "Fixed event",
+                "Fixed",
+            )
+            for event in fixed_events
+        ]
+
+        timetable_entries.extend(
+            (
+                task.scheduled_start,
+                task.scheduled_end,
+                task.title,
+                f"{task.priority or 'Low'} priority · {task.duration or 0} min",
+                task.status,
+            )
+            for task in today_tasks
+        )
+        timetable_entries.sort(
+            key=lambda entry: (entry[0] or time.min, entry[1] or time.min)
+        )
+
+        if not timetable_entries:
+            st.info("No fixed events or AI-scheduled tasks for today.")
+        else:
+            today_timetable = [
+                {
+                    "Start": (
+                        start.strftime("%I:%M %p")
+                        if start
+                        else "--:--"
+                    ),
+                    "End": (
+                        end.strftime("%I:%M %p")
+                        if end
+                        else "--:--"
+                    ),
+                    "Activity": title,
+                    "Type": category,
+                    "Status": status,
+                }
+                for start, end, title, category, status in timetable_entries
+            ]
+
+            st.dataframe(
+                today_timetable,
+                width="stretch",
+                hide_index=True,
+            )
 
     finally:
 

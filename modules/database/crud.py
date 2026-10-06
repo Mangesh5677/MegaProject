@@ -1,4 +1,19 @@
-from .models import FixedSchedule, Task, ScheduledTask
+from sqlalchemy import or_
+
+from .activity import UserActivity
+from .models import (
+    FixedSchedule,
+    Internship,
+    InternshipApplication,
+    PreparationTask,
+    Reward,
+    ScheduledTask,
+    Settings,
+    Task,
+    User,
+    UserReward,
+)
+from modules.analytics.activity_service import log_activity
 
 
 # ============================================================
@@ -75,6 +90,7 @@ def delete_fixed_schedule(
 # TASK CRUD
 # ============================================================
 
+
 def add_task(
     db,
     user_id,
@@ -86,10 +102,11 @@ def add_task(
     duration,
     email,
     task_type="Once",
+    assigned_by_id=None,
 ):
-
     task = Task(
         user_id=user_id,
+        assigned_by_id=assigned_by_id,
         title=title,
         description=description,
         priority=priority,
@@ -98,11 +115,9 @@ def add_task(
         duration=duration,
         email=email,
         task_type=task_type,
-
         reminder_24h_sent=False,
         reminder_2h_sent=False,
         reminder_30m_sent=False,
-
         status="Pending",
     )
 
@@ -110,7 +125,76 @@ def add_task(
     db.commit()
     db.refresh(task)
 
+    # Log task creation
+    log_activity(
+        db,
+        user_id,
+        "TASK_CREATED",
+        f"Created task: {title}"
+    )
+
     return task
+
+
+def assign_task_to_user(
+    db,
+    admin_id,
+    user_id,
+    title,
+    description,
+    priority,
+    due_date,
+    due_time,
+    duration,
+):
+    admin = db.query(User).filter(User.id == admin_id).first()
+    if admin is None or admin.role != "admin":
+        raise PermissionError("Only administrators can assign tasks.")
+
+    assignee = (
+        db.query(User)
+        .filter(
+            User.id == user_id,
+            User.role == "user",
+        )
+        .first()
+    )
+    if assignee is None:
+        raise ValueError("Select a valid regular user to assign this task to.")
+
+    task = add_task(
+        db=db,
+        user_id=assignee.id,
+        title=title,
+        description=description,
+        priority=priority,
+        due_date=due_date,
+        due_time=due_time,
+        duration=duration,
+        email=assignee.email,
+        task_type="Once",
+        assigned_by_id=admin.id,
+    )
+
+    log_activity(
+        db,
+        admin.id,
+        "TASK_ASSIGNED",
+        f"Assigned task '{title}' to {assignee.name} "
+        f"with deadline {due_date} at {due_time}.",
+    )
+
+    return task
+
+
+def get_admin_assigned_tasks(db, admin_id):
+    return (
+        db.query(Task, User)
+        .join(User, User.id == Task.user_id)
+        .filter(Task.assigned_by_id == admin_id)
+        .order_by(Task.due_date, Task.due_time, Task.id)
+        .all()
+    )
 
 
 def get_tasks(db, user_id):
@@ -223,8 +307,15 @@ def complete_task(
         db.commit()
         db.refresh(task)
 
-        return task
+        # Log task completion
+        log_activity(
+            db,
+            user_id,
+            "TASK_COMPLETED",
+            f"Completed task: {task.title}"
+        )
 
+        return task
     return None
 
 
@@ -364,3 +455,61 @@ def get_task_statistics(
         "pending": pending,
         "productivity": productivity,
     }
+
+
+def delete_user_account(db, user_id):
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if user is None or user.role != "user":
+        return False
+
+    try:
+        internship_ids = [
+            row[0]
+            for row in db.query(Internship.id)
+            .filter(Internship.user_id == user_id)
+            .all()
+        ]
+
+        application_filter = InternshipApplication.user_id == user_id
+        preparation_filter = PreparationTask.user_id == user_id
+
+        if internship_ids:
+            application_filter = or_(
+                application_filter,
+                InternshipApplication.internship_id.in_(internship_ids),
+            )
+            preparation_filter = or_(
+                preparation_filter,
+                PreparationTask.internship_id.in_(internship_ids),
+            )
+
+        db.query(InternshipApplication).filter(application_filter).delete(
+            synchronize_session=False
+        )
+        db.query(PreparationTask).filter(preparation_filter).delete(
+            synchronize_session=False
+        )
+        db.query(Internship).filter(
+            Internship.user_id == user_id
+        ).delete(synchronize_session=False)
+
+        for related_model in (
+            UserActivity,
+            Settings,
+            Task,
+            FixedSchedule,
+            ScheduledTask,
+            Reward,
+            UserReward,
+        ):
+            db.query(related_model).filter(
+                related_model.user_id == user_id
+            ).delete(synchronize_session=False)
+
+        db.delete(user)
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        raise

@@ -27,10 +27,14 @@ def ensure_database_schema():
         return
 
     existing_columns = {col["name"] for col in inspector.get_columns("tasks")}
-    if "task_type" not in existing_columns:
-        with engine.begin() as conn:
+    with engine.begin() as conn:
+        if "task_type" not in existing_columns:
             conn.execute(
                 text("ALTER TABLE tasks ADD COLUMN task_type VARCHAR DEFAULT 'Once'")
+            )
+        if "assigned_by_id" not in existing_columns:
+            conn.execute(
+                text("ALTER TABLE tasks ADD COLUMN assigned_by_id INTEGER")
             )
 
 

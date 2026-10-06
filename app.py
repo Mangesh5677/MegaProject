@@ -1,7 +1,12 @@
+import base64
+from pathlib import Path
+
 import streamlit as st
 from modules.notifications.scheduler import start_scheduler
 from ui.pages.settings import render_settings
 
+PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_LOGO = PROJECT_ROOT / "assets" / "project-logo.png"
 
 # ==========================
 # Page Config
@@ -9,7 +14,7 @@ from ui.pages.settings import render_settings
 
 st.set_page_config(
     page_title="AI Productivity Manager",
-    page_icon="🚀",
+    page_icon=str(PROJECT_LOGO),
     layout="wide",
 )
 
@@ -31,7 +36,7 @@ if "scheduler_started" not in st.session_state:
 # ==========================
 
 def load_css():
-    with open("ui/styles/style.css") as f:
+    with open("ui/styles/theme.css") as f:
         st.markdown(
             f"<style>{f.read()}</style>",
             unsafe_allow_html=True,
@@ -56,28 +61,33 @@ from ui.pages.register import render_register
 # ==========================
 
 if not is_logged_in():
+    logo_data = base64.b64encode(PROJECT_LOGO.read_bytes()).decode("ascii")
 
     st.markdown(
-        """
+        f"""
         <div class="auth-brand">
-            <div class="brand-mark">⚡</div>
+            <img class="brand-mark" src="data:image/png;base64,{logo_data}" alt="AI Productivity Manager logo">
             <div class="brand-text">AI Productivity Manager</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    tab1, tab2 = st.tabs(
+    tab1, tab2, tab3 = st.tabs(
         [
-            "Login",
+            "User Login",
+            "Admin Login",
             "Register"
         ]
     )
 
     with tab1:
-        render_login()
+        render_login(required_role="user")
 
     with tab2:
+        render_login(required_role="admin")
+
+    with tab3:
         render_register()
 
     st.stop()
@@ -86,7 +96,7 @@ if not is_logged_in():
 # Import Main Pages
 # ==========================
 
-from ui.sidebar import render_sidebar
+from ui.sidebar import render_sidebar, render_user_profile
 from ui.pages.dashboard import render_dashboard
 
 from ui.pages.tasks import render_tasks
@@ -98,27 +108,30 @@ from ui.pages.ai_advisor import render_ai_advisor
 from ui.pages.chatbot import render_chatbot
 from ui.pages.career import render_career
 from ui.pages.rewards import render_rewards
+from ui.pages.admin_dashboard import render_admin_dashboard
+
+user = st.session_state.user
+page = render_sidebar()
+render_user_profile(user)
+
+if st.sidebar.button("🚪 Logout"):
+    logout()
+    st.rerun()
+
+if getattr(user, "role", "user") == "admin":
+    if page == "Settings":
+        render_settings()
+    else:
+        render_admin_dashboard()
+    st.stop()
 
 # ==========================
 # Sidebar
 # ==========================
 
-page = render_sidebar()
-
-st.sidebar.success(
-    f"👋 {st.session_state.user.name}"
-)
-
-if st.sidebar.button("🚪 Logout"):
-
-    logout()
-
-    st.rerun()
-
 # ==========================
 # Navigation
 # ==========================
-
 if page == "Dashboard":
 
     render_dashboard()
